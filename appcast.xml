@@ -4,12 +4,12 @@
     <title>TypeWhisper Updates</title>
     <language>en</language>
     <item>
-      <title>Version 0.5.0</title>
-      <pubDate>Mon, 16 Feb 2026 12:54:32 +0000</pubDate>
-      <sparkle:version>0.5.0</sparkle:version>
-      <sparkle:shortVersionString>0.5.0</sparkle:shortVersionString>
+      <title>Version 0.5.1</title>
+      <pubDate>Mon, 16 Feb 2026 14:03:07 +0000</pubDate>
+      <sparkle:version>0.5.1</sparkle:version>
+      <sparkle:shortVersionString>0.5.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/TypeWhisper/typewhisper-mac/releases/download/v0.5.0/TypeWhisper-v0.5.0.zip" sparkle:edSignature="4RKhV9Ue5+i5D77YKk2utIuhB+kHyM++mFn4i88ox+3p0u7hEi9LUDZk1ojgk4OwJa9OJTaJ9QXFHL0qYv7DDg==" length="8277286" type="application/octet-stream"/>
+      <enclosure url="https://github.com/TypeWhisper/typewhisper-mac/releases/download/v0.5.1/TypeWhisper-v0.5.1.zip" sparkle:edSignature="x9iYqdO4wy18l+4/rF9YWumUwrp1WQgDxz3H6fu1h2GgXa95Ab5UPROjK0JWSl0hHfPcD0+JbupCIJATMhnUCA==" length="8278610" type="application/octet-stream"/>
     </item>
   </channel>
 </rss>
