@@ -47,11 +47,10 @@ final class ProfileService: ObservableObject {
         inputLanguage: String? = nil,
         translationTargetLanguage: String? = nil,
         selectedTask: String? = nil,
-        whisperModeOverride: Bool? = nil,
         engineOverride: String? = nil,
         cloudModelOverride: String? = nil,
         promptActionId: String? = nil,
-        autoSubmitEnabled: Bool? = nil,
+        hotkeyData: Data? = nil,
         priority: Int = 0
     ) {
         let profile = Profile(
@@ -62,11 +61,10 @@ final class ProfileService: ObservableObject {
             inputLanguage: inputLanguage,
             translationTargetLanguage: translationTargetLanguage,
             selectedTask: selectedTask,
-            whisperModeOverride: whisperModeOverride,
             engineOverride: engineOverride,
             cloudModelOverride: cloudModelOverride,
             promptActionId: promptActionId,
-            autoSubmitEnabled: autoSubmitEnabled
+            hotkeyData: hotkeyData
         )
         modelContext.insert(profile)
         save()

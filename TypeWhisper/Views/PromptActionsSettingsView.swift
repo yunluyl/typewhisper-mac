@@ -224,16 +224,6 @@ private struct PromptActionCardView: View {
 
             Spacer()
 
-            if action.isPreset {
-                Text(String(localized: "Preset"))
-                    .font(.caption2)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
-                    .background(Color.secondary.opacity(0.12))
-                    .foregroundColor(.secondary)
-                    .cornerRadius(3)
-            }
-
             Toggle("", isOn: Binding(
                 get: { action.isEnabled },
                 set: { _ in viewModel.toggleAction(action) }

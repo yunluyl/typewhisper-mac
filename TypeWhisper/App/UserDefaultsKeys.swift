@@ -4,14 +4,9 @@ import Foundation
 /// Prevents typo-induced bugs and makes keys discoverable via autocomplete.
 enum UserDefaultsKeys {
     // MARK: - Dictation
-    static let whisperModeEnabled = "whisperModeEnabled"
     static let audioDuckingEnabled = "audioDuckingEnabled"
     static let audioDuckingLevel = "audioDuckingLevel"
-    static let mediaPauseEnabled = "mediaPauseEnabled"
     static let soundFeedbackEnabled = "soundFeedbackEnabled"
-    static let silencePauseEnabled = "silencePauseEnabled"
-    static let silenceAutoStopDuration = "silenceAutoStopDuration"
-    static let silenceThreshold = "silenceThreshold"
     static let overlayPosition = "overlayPosition"
 
     // MARK: - Hotkey (JSON-encoded UnifiedHotkey per slot)
@@ -30,7 +25,6 @@ enum UserDefaultsKeys {
     static let selectedTask = "selectedTask"
     static let translationEnabled = "translationEnabled"
     static let translationTargetLanguage = "translationTargetLanguage"
-    static let defaultPromptActionId = "defaultPromptActionId"
     static let preferredAppLanguage = "preferredAppLanguage"
 
     // MARK: - API Server
@@ -46,8 +40,8 @@ enum UserDefaultsKeys {
     // MARK: - Dictionary
     static let activatedTermPacks = "activatedTermPacks"
 
-    // MARK: - Prompt Palette
-    static let promptDisplayDuration = "promptDisplayDuration"
+    // MARK: - History
+    static let historyRetentionDays = "historyRetentionDays"
 
     // MARK: - Notch Indicator
     static let notchIndicatorVisibility = "notchIndicatorVisibility"

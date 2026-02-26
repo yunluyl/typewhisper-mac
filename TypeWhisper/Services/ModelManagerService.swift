@@ -7,6 +7,12 @@ final class ModelManagerService: ObservableObject {
     @Published private(set) var modelStatuses: [String: ModelStatus] = [:]
     @Published private(set) var selectedEngine: EngineType
     @Published private(set) var selectedModelId: String?
+
+    /// Whether the currently selected main engine is a cloud/plugin engine
+    var isCloudEngineSelected: Bool {
+        guard let selectedId = selectedModelId else { return false }
+        return CloudProvider.isCloudModel(selectedId)
+    }
     @Published private(set) var activeEngine: (any TranscriptionEngine)?
 
     private let whisperEngine = WhisperEngine()

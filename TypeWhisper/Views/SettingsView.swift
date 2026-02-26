@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum SettingsTab: Hashable {
-    case home, general, models, dictation
+    case home, general, models, recording
     case fileTranscription, history, dictionary, snippets, profiles, prompts, integrations, advanced
 }
 
@@ -27,9 +27,9 @@ struct SettingsView: View {
                     ModelManagerView()
                         .tabItem { Label(String(localized: "Models"), systemImage: "cpu") }
                         .tag(SettingsTab.models)
-                    DictationSettingsView()
-                        .tabItem { Label(String(localized: "Dictation"), systemImage: "mic.fill") }
-                        .tag(SettingsTab.dictation)
+                    RecordingSettingsView()
+                        .tabItem { Label(String(localized: "Recording"), systemImage: "mic.fill") }
+                        .tag(SettingsTab.recording)
                     FileTranscriptionView()
                         .tabItem { Label(String(localized: "File Transcription"), systemImage: "doc.text") }
                         .tag(SettingsTab.fileTranscription)
@@ -83,8 +83,8 @@ private struct SettingsMainTabs: TabContent {
         Tab(String(localized: "Models"), systemImage: "cpu", value: SettingsTab.models) {
             ModelManagerView()
         }
-        Tab(String(localized: "Dictation"), systemImage: "mic.fill", value: SettingsTab.dictation) {
-            DictationSettingsView()
+        Tab(String(localized: "Recording"), systemImage: "mic.fill", value: SettingsTab.recording) {
+            RecordingSettingsView()
         }
         Tab(String(localized: "File Transcription"), systemImage: "doc.text", value: SettingsTab.fileTranscription) {
             FileTranscriptionView()
@@ -120,15 +120,25 @@ private struct SettingsExtraTabs: TabContent {
     }
 }
 
-struct DictationSettingsView: View {
+struct RecordingSettingsView: View {
     @ObservedObject private var dictation = DictationViewModel.shared
+    @ObservedObject private var audioDevice = ServiceContainer.shared.audioDeviceService
+
+    private var needsPermissions: Bool {
+        dictation.needsMicPermission || dictation.needsAccessibilityPermission
+    }
 
     var body: some View {
         Form {
+            if needsPermissions {
+                PermissionsBanner(dictation: dictation)
+            }
+
             Section(String(localized: "Hotkeys")) {
                 HotkeyRecorderView(
                     label: dictation.hybridHotkeyLabel,
                     title: String(localized: "Hybrid"),
+                    subtitle: String(localized: "Short press to toggle, hold to push-to-talk."),
                     onRecord: { hotkey in
                         if let conflict = dictation.isHotkeyAssigned(hotkey, excluding: .hybrid) {
                             dictation.clearHotkey(for: conflict)
@@ -137,13 +147,11 @@ struct DictationSettingsView: View {
                     },
                     onClear: { dictation.clearHotkey(for: .hybrid) }
                 )
-                Text(String(localized: "Short press to toggle, hold to push-to-talk."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
 
                 HotkeyRecorderView(
                     label: dictation.pttHotkeyLabel,
                     title: String(localized: "Push-to-Talk"),
+                    subtitle: String(localized: "Hold to record, release to stop."),
                     onRecord: { hotkey in
                         if let conflict = dictation.isHotkeyAssigned(hotkey, excluding: .pushToTalk) {
                             dictation.clearHotkey(for: conflict)
@@ -152,13 +160,11 @@ struct DictationSettingsView: View {
                     },
                     onClear: { dictation.clearHotkey(for: .pushToTalk) }
                 )
-                Text(String(localized: "Hold to record, release to stop."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
 
                 HotkeyRecorderView(
                     label: dictation.toggleHotkeyLabel,
                     title: String(localized: "Toggle"),
+                    subtitle: String(localized: "Press to start, press again to stop."),
                     onRecord: { hotkey in
                         if let conflict = dictation.isHotkeyAssigned(hotkey, excluding: .toggle) {
                             dictation.clearHotkey(for: conflict)
@@ -167,9 +173,6 @@ struct DictationSettingsView: View {
                     },
                     onClear: { dictation.clearHotkey(for: .toggle) }
                 )
-                Text(String(localized: "Press to start, press again to stop."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             Section(String(localized: "Prompt Palette")) {
@@ -188,14 +191,115 @@ struct DictationSettingsView: View {
                 Text(String(localized: "Select text in any app, press the shortcut, and choose a prompt to process the text."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
 
-                HStack {
-                    Text(String(localized: "Display duration"))
-                    Slider(value: $dictation.promptDisplayDuration, in: 3...30, step: 1)
-                    Text("\(Int(dictation.promptDisplayDuration))s")
-                        .monospacedDigit()
-                        .frame(width: 30, alignment: .trailing)
+            Section(String(localized: "Microphone")) {
+                Picker(String(localized: "Input Device"), selection: $audioDevice.selectedDeviceUID) {
+                    Text(String(localized: "System Default")).tag(nil as String?)
+                    Divider()
+                    ForEach(audioDevice.inputDevices) { device in
+                        Text(device.name).tag(device.uid as String?)
+                    }
                 }
+
+                if audioDevice.isPreviewActive {
+                    HStack(spacing: 8) {
+                        Image(systemName: "mic.fill")
+                            .foregroundStyle(.secondary)
+                            .font(.caption)
+
+                        GeometryReader { geo in
+                            let maxRms: Float = 0.15
+                            let levelWidth = max(0, geo.size.width * CGFloat(min(audioDevice.previewRawLevel, maxRms) / maxRms))
+
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(.quaternary)
+
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(Color.green.gradient)
+                                    .frame(width: levelWidth)
+                                    .animation(.easeOut(duration: 0.08), value: audioDevice.previewRawLevel)
+                            }
+                        }
+                        .frame(height: 6)
+                    }
+                    .padding(.vertical, 4)
+                }
+
+                Button(audioDevice.isPreviewActive
+                    ? String(localized: "Stop Preview")
+                    : String(localized: "Test Microphone")
+                ) {
+                    if audioDevice.isPreviewActive {
+                        audioDevice.stopPreview()
+                    } else {
+                        audioDevice.startPreview()
+                    }
+                }
+                .disabled(!audioDevice.isPreviewActive && dictation.needsMicPermission)
+
+                if let name = audioDevice.disconnectedDeviceName {
+                    Label(
+                        String(localized: "Microphone disconnected. Falling back to system default."),
+                        systemImage: "exclamationmark.triangle"
+                    )
+                    .foregroundStyle(.orange)
+                    .font(.caption)
+                    .onAppear {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                            if audioDevice.disconnectedDeviceName == name {
+                                audioDevice.disconnectedDeviceName = nil
+                            }
+                        }
+                    }
+                }
+            }
+
+            Section(String(localized: "Sound")) {
+                Toggle(String(localized: "Play sound feedback"), isOn: $dictation.soundFeedbackEnabled)
+
+                Text(String(localized: "Plays a sound when recording starts and when transcription completes."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section(String(localized: "Audio Ducking")) {
+                Toggle(String(localized: "Reduce system volume during recording"), isOn: $dictation.audioDuckingEnabled)
+
+                if dictation.audioDuckingEnabled {
+                    HStack {
+                        Image(systemName: "speaker.slash")
+                            .foregroundStyle(.secondary)
+                        Slider(value: $dictation.audioDuckingLevel, in: 0...0.5, step: 0.05)
+                        Image(systemName: "speaker.wave.2")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Text(String(localized: "Percentage of your current volume to use during recording. 0% mutes completely."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Section(String(localized: "Notch Indicator")) {
+                Picker(String(localized: "Visibility"), selection: $dictation.notchIndicatorVisibility) {
+                    Text(String(localized: "Always visible")).tag(DictationViewModel.NotchIndicatorVisibility.always)
+                    Text(String(localized: "Only during activity")).tag(DictationViewModel.NotchIndicatorVisibility.duringActivity)
+                    Text(String(localized: "Never")).tag(DictationViewModel.NotchIndicatorVisibility.never)
+                }
+
+                Picker(String(localized: "Left Side"), selection: $dictation.notchIndicatorLeftContent) {
+                    notchContentPickerOptions
+                }
+
+                Picker(String(localized: "Right Side"), selection: $dictation.notchIndicatorRightContent) {
+                    notchContentPickerOptions
+                }
+
+                Text(String(localized: "The notch indicator extends the MacBook notch area to show recording status."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section(String(localized: "Permissions")) {
@@ -243,23 +347,65 @@ struct DictationSettingsView: View {
                     }
                 }
             }
-
-            Section(String(localized: "Behavior")) {
-                Toggle(String(localized: "Whisper Mode"), isOn: $dictation.whisperModeEnabled)
-
-                Text(String(localized: "Boosts microphone gain for quiet speech. Useful when you can't speak loudly."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text(String(localized: "Transcribed text is automatically pasted into the active application using the clipboard. The previous clipboard content is restored after pasting."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
         }
         .formStyle(.grouped)
         .padding()
         .frame(minWidth: 500, minHeight: 300)
+    }
+
+    @ViewBuilder
+    private var notchContentPickerOptions: some View {
+        Text(String(localized: "Recording Indicator")).tag(DictationViewModel.NotchIndicatorContent.indicator)
+        Text(String(localized: "Timer")).tag(DictationViewModel.NotchIndicatorContent.timer)
+        Text(String(localized: "Waveform")).tag(DictationViewModel.NotchIndicatorContent.waveform)
+        Text(String(localized: "Profile")).tag(DictationViewModel.NotchIndicatorContent.profile)
+        Text(String(localized: "None")).tag(DictationViewModel.NotchIndicatorContent.none)
+    }
+}
+
+// MARK: - Permissions Banner
+
+struct PermissionsBanner: View {
+    @ObservedObject var dictation: DictationViewModel
+
+    var body: some View {
+        Section {
+            if dictation.needsMicPermission {
+                HStack {
+                    Label(
+                        String(localized: "Microphone access required"),
+                        systemImage: "mic.slash"
+                    )
+                    .foregroundStyle(.red)
+
+                    Spacer()
+
+                    Button(String(localized: "Grant Access")) {
+                        dictation.requestMicPermission()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+
+            if dictation.needsAccessibilityPermission {
+                HStack {
+                    Label(
+                        String(localized: "Accessibility access required"),
+                        systemImage: "lock.shield"
+                    )
+                    .foregroundStyle(.red)
+
+                    Spacer()
+
+                    Button(String(localized: "Grant Access")) {
+                        dictation.requestAccessibilityPermission()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+        }
     }
 }
 
@@ -268,43 +414,66 @@ struct DictationSettingsView: View {
 struct HotkeyRecorderView: View {
     let label: String
     var title: String = String(localized: "Dictation shortcut")
+    var subtitle: String? = nil
     let onRecord: (UnifiedHotkey) -> Void
     let onClear: () -> Void
 
     @State private var isRecording = false
     @State private var pendingModifiers: NSEvent.ModifierFlags = []
     @State private var eventMonitor: Any?
+    private static var activeRecorder: UUID?
+    @State private var id = UUID()
 
     var body: some View {
         HStack {
-            Text(title)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
             Spacer()
-            Button {
-                startRecording()
-            } label: {
-                if isRecording {
+            if isRecording {
+                Button {
+                    cancelRecording()
+                } label: {
                     Text(pendingModifierString.isEmpty
                         ? String(localized: "Press a key…")
                         : pendingModifierString)
                         .foregroundStyle(.orange)
-                } else if label.isEmpty {
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            } else if label.isEmpty {
+                Button {
+                    startRecording()
+                } label: {
                     Text(String(localized: "Record Shortcut"))
-                } else {
-                    HStack(spacing: 4) {
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            } else {
+                HStack(spacing: 4) {
+                    Button {
+                        startRecording()
+                    } label: {
                         Text(label)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(.quaternary, in: RoundedRectangle(cornerRadius: 4))
+                    }
+                    .buttonStyle(.plain)
+                    Button {
+                        onClear()
+                    } label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(.secondary)
-                            .onTapGesture {
-                                onClear()
-                            }
                     }
+                    .buttonStyle(.plain)
                 }
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
         }
     }
 
@@ -318,23 +487,24 @@ struct HotkeyRecorderView: View {
     }
 
     private func startRecording() {
+        if let activeId = Self.activeRecorder, activeId != id {
+            return
+        }
+        Self.activeRecorder = id
         isRecording = true
         pendingModifiers = []
         ServiceContainer.shared.hotkeyService.suspendMonitoring()
         eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
             if event.type == .flagsChanged {
-                // Fn key
                 if event.modifierFlags.contains(.function) {
                     finishRecording(UnifiedHotkey(keyCode: 0, modifierFlags: 0, isFn: true))
                     return nil
                 }
 
-                // Track modifier state
                 let relevantMask: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
                 let current = event.modifierFlags.intersection(relevantMask)
 
                 if current.isEmpty, !pendingModifiers.isEmpty {
-                    // All modifiers released - record as modifier-only key
                     if HotkeyService.modifierKeyCodes.contains(event.keyCode) {
                         finishRecording(UnifiedHotkey(keyCode: event.keyCode, modifierFlags: 0, isFn: false))
                         return nil
@@ -345,7 +515,6 @@ struct HotkeyRecorderView: View {
             }
 
             if event.type == .keyDown {
-                // Escape without modifiers cancels recording
                 if event.keyCode == 0x35, pendingModifiers.isEmpty {
                     cancelRecording()
                     return nil
@@ -363,6 +532,9 @@ struct HotkeyRecorderView: View {
     }
 
     private func finishRecording(_ hotkey: UnifiedHotkey) {
+        if Self.activeRecorder == id {
+            Self.activeRecorder = nil
+        }
         isRecording = false
         pendingModifiers = []
         if let monitor = eventMonitor {
@@ -374,6 +546,9 @@ struct HotkeyRecorderView: View {
     }
 
     private func cancelRecording() {
+        if Self.activeRecorder == id {
+            Self.activeRecorder = nil
+        }
         isRecording = false
         pendingModifiers = []
         if let monitor = eventMonitor {

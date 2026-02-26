@@ -12,13 +12,22 @@ final class Profile {
     var inputLanguage: String?
     var translationTargetLanguage: String?
     var selectedTask: String?
-    var whisperModeOverride: Bool?
     var engineOverride: String?
     var cloudModelOverride: String?
     var promptActionId: String?
-    var autoSubmitEnabled: Bool?
+    var hotkeyData: Data?
     var createdAt: Date
     var updatedAt: Date
+
+    var hotkey: UnifiedHotkey? {
+        get {
+            guard let data = hotkeyData else { return nil }
+            return try? JSONDecoder().decode(UnifiedHotkey.self, from: data)
+        }
+        set {
+            hotkeyData = newValue.flatMap { try? JSONEncoder().encode($0) }
+        }
+    }
 
     init(
         id: UUID = UUID(),
@@ -30,11 +39,10 @@ final class Profile {
         inputLanguage: String? = nil,
         translationTargetLanguage: String? = nil,
         selectedTask: String? = nil,
-        whisperModeOverride: Bool? = nil,
         engineOverride: String? = nil,
         cloudModelOverride: String? = nil,
         promptActionId: String? = nil,
-        autoSubmitEnabled: Bool? = nil,
+        hotkeyData: Data? = nil,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -47,11 +55,10 @@ final class Profile {
         self.inputLanguage = inputLanguage
         self.translationTargetLanguage = translationTargetLanguage
         self.selectedTask = selectedTask
-        self.whisperModeOverride = whisperModeOverride
         self.engineOverride = engineOverride
         self.cloudModelOverride = cloudModelOverride
         self.promptActionId = promptActionId
-        self.autoSubmitEnabled = autoSubmitEnabled
+        self.hotkeyData = hotkeyData
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

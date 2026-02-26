@@ -16,7 +16,6 @@ final class ServiceContainer: ObservableObject {
     let profileService: ProfileService
     let translationService: AnyObject? // TranslationService (macOS 15+)
     let audioDuckingService: AudioDuckingService
-    let mediaPlaybackService: MediaPlaybackService
     let dictionaryService: DictionaryService
     let snippetService: SnippetService
     let soundService: SoundService
@@ -61,7 +60,6 @@ final class ServiceContainer: ObservableObject {
         translationService = nil
         #endif
         audioDuckingService = AudioDuckingService()
-        mediaPlaybackService = MediaPlaybackService()
         dictionaryService = DictionaryService()
         snippetService = SnippetService()
         soundService = SoundService()
@@ -87,7 +85,6 @@ final class ServiceContainer: ObservableObject {
             profileService: profileService,
             translationService: translationService,
             audioDuckingService: audioDuckingService,
-            mediaPlaybackService: mediaPlaybackService,
             dictionaryService: dictionaryService,
             snippetService: snippetService,
             soundService: soundService,
@@ -141,7 +138,9 @@ final class ServiceContainer: ObservableObject {
 
     func initialize() async {
         hotkeyService.setup()
-        historyService.purgeOldRecords()
+        dictationViewModel.registerInitialProfileHotkeys()
+        let retentionDays = UserDefaults.standard.integer(forKey: UserDefaultsKeys.historyRetentionDays)
+        if retentionDays > 0 { historyService.purgeOldRecords(retentionDays: retentionDays) }
 
         if apiServerViewModel.isEnabled {
             apiServerViewModel.startServer()

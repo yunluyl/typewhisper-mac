@@ -3,6 +3,7 @@ import Charts
 
 struct HomeSettingsView: View {
     @ObservedObject private var viewModel = HomeViewModel.shared
+    @ObservedObject private var dictation = DictationViewModel.shared
 
     var body: some View {
         if viewModel.showSetupWizard {
@@ -29,6 +30,11 @@ struct HomeSettingsView: View {
                     }
                     .pickerStyle(.segmented)
                     .frame(width: 160)
+                }
+
+                // Permissions warning
+                if dictation.needsMicPermission || dictation.needsAccessibilityPermission {
+                    permissionsBanner
                 }
 
                 // Stats grid
@@ -131,6 +137,43 @@ struct HomeSettingsView: View {
         }
         .padding()
         .background(.quaternary.opacity(0.3))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var permissionsBanner: some View {
+        VStack(spacing: 8) {
+            if dictation.needsMicPermission {
+                HStack {
+                    Label(
+                        String(localized: "Microphone access required"),
+                        systemImage: "mic.slash"
+                    )
+                    Spacer()
+                    Button(String(localized: "Grant Access")) {
+                        dictation.requestMicPermission()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+            if dictation.needsAccessibilityPermission {
+                HStack {
+                    Label(
+                        String(localized: "Accessibility access required"),
+                        systemImage: "lock.shield"
+                    )
+                    Spacer()
+                    Button(String(localized: "Grant Access")) {
+                        dictation.requestAccessibilityPermission()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+        }
+        .foregroundStyle(.red)
+        .padding()
+        .background(.red.opacity(0.1))
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }

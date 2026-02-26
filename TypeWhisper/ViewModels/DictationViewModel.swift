@@ -21,7 +21,6 @@ final class DictationViewModel: ObservableObject {
     enum State: Equatable {
         case idle
         case recording
-        case paused          // silence detected, waiting for speech to resume
         case processing
         case inserting
         case promptSelection(String)    // text ready, user picks a prompt
@@ -35,48 +34,24 @@ final class DictationViewModel: ObservableObject {
     @Published var hotkeyMode: HotkeyService.HotkeyMode?
     @Published var partialText: String = ""
     @Published var isStreaming: Bool = false
-    @Published var whisperModeEnabled: Bool {
-        didSet { UserDefaults.standard.set(whisperModeEnabled, forKey: UserDefaultsKeys.whisperModeEnabled) }
-    }
     @Published var audioDuckingEnabled: Bool {
         didSet { UserDefaults.standard.set(audioDuckingEnabled, forKey: UserDefaultsKeys.audioDuckingEnabled) }
     }
     @Published var audioDuckingLevel: Double {
         didSet { UserDefaults.standard.set(audioDuckingLevel, forKey: UserDefaultsKeys.audioDuckingLevel) }
     }
-    @Published var mediaPauseEnabled: Bool {
-        didSet { UserDefaults.standard.set(mediaPauseEnabled, forKey: UserDefaultsKeys.mediaPauseEnabled) }
-    }
     @Published var soundFeedbackEnabled: Bool {
         didSet { UserDefaults.standard.set(soundFeedbackEnabled, forKey: UserDefaultsKeys.soundFeedbackEnabled) }
     }
-    @Published var silencePauseEnabled: Bool {
-        didSet { UserDefaults.standard.set(silencePauseEnabled, forKey: UserDefaultsKeys.silencePauseEnabled) }
-    }
-    @Published var silenceAutoStopDuration: Double {
-        didSet {
-            UserDefaults.standard.set(silenceAutoStopDuration, forKey: UserDefaultsKeys.silenceAutoStopDuration)
-            audioRecordingService.silenceAutoStopDuration = silenceAutoStopDuration
-        }
-    }
-    @Published var silenceThreshold: Double {
-        didSet {
-            UserDefaults.standard.set(silenceThreshold, forKey: UserDefaultsKeys.silenceThreshold)
-            audioRecordingService.silenceThreshold = Float(silenceThreshold)
-        }
-    }
-    @Published var hybridHotkeyLabel: String
-    @Published var pttHotkeyLabel: String
-    @Published var toggleHotkeyLabel: String
-    @Published var promptPaletteHotkeyLabel: String
+    @Published var hotkeyLabelsVersion = 0
+    var hybridHotkeyLabel: String { Self.loadHotkeyLabel(for: .hybrid) }
+    var pttHotkeyLabel: String { Self.loadHotkeyLabel(for: .pushToTalk) }
+    var toggleHotkeyLabel: String { Self.loadHotkeyLabel(for: .toggle) }
+    var promptPaletteHotkeyLabel: String { Self.loadHotkeyLabel(for: .promptPalette) }
     @Published var activeProfileName: String?
     @Published var actionFeedbackMessage: String?
     @Published var actionFeedbackIcon: String?
     private var actionDisplayDuration: TimeInterval = 3.5
-    @Published var promptDisplayDuration: Double {
-        didSet { UserDefaults.standard.set(promptDisplayDuration, forKey: UserDefaultsKeys.promptDisplayDuration) }
-    }
-
     enum OverlayPosition: String, CaseIterable {
         case top
         case bottom
@@ -92,8 +67,7 @@ final class DictationViewModel: ObservableObject {
         case indicator
         case timer
         case waveform
-        case clock
-        case battery
+        case profile
         case none
     }
 
@@ -122,7 +96,6 @@ final class DictationViewModel: ObservableObject {
     private let profileService: ProfileService
     private let translationService: AnyObject? // TranslationService (macOS 15+)
     private let audioDuckingService: AudioDuckingService
-    private let mediaPlaybackService: MediaPlaybackService
     private let dictionaryService: DictionaryService
     private let snippetService: SnippetService
     private let soundService: SoundService
@@ -131,6 +104,7 @@ final class DictationViewModel: ObservableObject {
     private let promptProcessingService: PromptProcessingService
     private let postProcessingPipeline: PostProcessingPipeline
     private var matchedProfile: Profile?
+    private var forcedProfileId: UUID?
     private var capturedActiveApp: (name: String?, bundleId: String?, url: String?)?
 
     private var cancellables = Set<AnyCancellable>()
@@ -138,7 +112,6 @@ final class DictationViewModel: ObservableObject {
     private var recordingStartTime: Date?
     private var streamingTask: Task<Void, Never>?
     private var transcriptionTask: Task<Void, Never>?
-    private var silenceTimer: Timer?
     private var errorResetTask: Task<Void, Never>?
     private var insertingResetTask: Task<Void, Never>?
     private var urlResolutionTask: Task<Void, Never>?
@@ -153,7 +126,6 @@ final class DictationViewModel: ObservableObject {
         profileService: ProfileService,
         translationService: AnyObject?,
         audioDuckingService: AudioDuckingService,
-        mediaPlaybackService: MediaPlaybackService,
         dictionaryService: DictionaryService,
         snippetService: SnippetService,
         soundService: SoundService,
@@ -170,7 +142,6 @@ final class DictationViewModel: ObservableObject {
         self.profileService = profileService
         self.translationService = translationService
         self.audioDuckingService = audioDuckingService
-        self.mediaPlaybackService = mediaPlaybackService
         self.dictionaryService = dictionaryService
         self.snippetService = snippetService
         self.soundService = soundService
@@ -181,23 +152,9 @@ final class DictationViewModel: ObservableObject {
             snippetService: snippetService,
             dictionaryService: dictionaryService
         )
-        self.whisperModeEnabled = UserDefaults.standard.bool(forKey: UserDefaultsKeys.whisperModeEnabled)
         self.audioDuckingEnabled = UserDefaults.standard.bool(forKey: UserDefaultsKeys.audioDuckingEnabled)
         self.audioDuckingLevel = UserDefaults.standard.object(forKey: UserDefaultsKeys.audioDuckingLevel) as? Double ?? 0.2
-        self.mediaPauseEnabled = UserDefaults.standard.bool(forKey: UserDefaultsKeys.mediaPauseEnabled)
         self.soundFeedbackEnabled = UserDefaults.standard.object(forKey: UserDefaultsKeys.soundFeedbackEnabled) as? Bool ?? true
-        self.silencePauseEnabled = UserDefaults.standard.bool(forKey: UserDefaultsKeys.silencePauseEnabled)
-        let storedDuration = UserDefaults.standard.object(forKey: UserDefaultsKeys.silenceAutoStopDuration) as? Double ?? 4.0
-        self.silenceAutoStopDuration = storedDuration
-        audioRecordingService.silenceAutoStopDuration = storedDuration
-        let storedThreshold = UserDefaults.standard.object(forKey: UserDefaultsKeys.silenceThreshold) as? Double ?? 0.015
-        self.silenceThreshold = storedThreshold
-        audioRecordingService.silenceThreshold = Float(storedThreshold)
-        self.promptDisplayDuration = UserDefaults.standard.object(forKey: UserDefaultsKeys.promptDisplayDuration) as? Double ?? 8.0
-        self.hybridHotkeyLabel = Self.loadHotkeyLabel(for: .hybrid)
-        self.pttHotkeyLabel = Self.loadHotkeyLabel(for: .pushToTalk)
-        self.toggleHotkeyLabel = Self.loadHotkeyLabel(for: .toggle)
-        self.promptPaletteHotkeyLabel = Self.loadHotkeyLabel(for: .promptPalette)
         self.overlayPosition = UserDefaults.standard.string(forKey: UserDefaultsKeys.overlayPosition)
             .flatMap { OverlayPosition(rawValue: $0) } ?? .top
         self.notchIndicatorVisibility = UserDefaults.standard.string(forKey: UserDefaultsKeys.notchIndicatorVisibility)
@@ -233,7 +190,7 @@ final class DictationViewModel: ObservableObject {
     // MARK: - HTTP API
 
     var isRecording: Bool {
-        state == .recording || state == .paused
+        state == .recording
     }
 
     func apiStartRecording() {
@@ -252,6 +209,20 @@ final class DictationViewModel: ObservableObject {
         hotkeyService.onDictationStop = { [weak self] in
             self?.stopDictation()
         }
+
+        hotkeyService.onProfileDictationStart = { [weak self] profileId in
+            self?.startRecording(forcedProfileId: profileId)
+        }
+
+        // Sync profile hotkeys whenever profiles change
+        // dropFirst: avoid early monitor setup during ServiceContainer.init() before app is ready
+        profileService.$profiles
+            .dropFirst()
+            .sink { [weak self] profiles in
+                guard let self else { return }
+                self.syncProfileHotkeys(profiles)
+            }
+            .store(in: &cancellables)
 
         audioRecordingService.$audioLevel
             .dropFirst()
@@ -273,7 +244,7 @@ final class DictationViewModel: ObservableObject {
         audioDeviceService.$disconnectedDeviceName
             .compactMap { $0 }
             .sink { [weak self] _ in
-                guard let self, self.state == .recording || self.state == .paused else { return }
+                guard let self, self.state == .recording else { return }
                 self.stopDictation()
                 self.hotkeyService.cancelDictation()
                 self.showError(String(localized: "Microphone disconnected. Falling back to system default."))
@@ -281,7 +252,7 @@ final class DictationViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
-    private func startRecording() {
+    private func startRecording(forcedProfileId: UUID? = nil) {
         // Dismiss prompt palette if active
         promptPaletteController.hide()
 
@@ -301,25 +272,31 @@ final class DictationViewModel: ObservableObject {
         insertingResetTask?.cancel()
         insertingResetTask = nil
 
-        // Match profile based on active app — store for reuse in stopDictation
+        self.forcedProfileId = forcedProfileId
+
+        // Match profile: forced profile or app-based matching
         let activeApp = textInsertionService.captureActiveApp()
         capturedActiveApp = activeApp
-        matchedProfile = profileService.matchProfile(bundleIdentifier: activeApp.bundleId, url: nil)
-        activeProfileName = matchedProfile?.name
 
-        // Apply gain boost: profile override ?? global setting
-        let effectiveWhisperMode = matchedProfile?.whisperModeOverride ?? whisperModeEnabled
-        audioRecordingService.gainMultiplier = effectiveWhisperMode ? 4.0 : 1.0
+        if let forcedProfileId,
+           let forcedProfile = profileService.profiles.first(where: { $0.id == forcedProfileId && $0.isEnabled }) {
+            matchedProfile = forcedProfile
+            activeProfileName = forcedProfile.name
+        } else {
+            matchedProfile = profileService.matchProfile(bundleIdentifier: activeApp.bundleId, url: nil)
+            activeProfileName = matchedProfile?.name
+        }
 
         // Resolve browser URL asynchronously to avoid blocking the main thread.
         // If a more specific URL profile matches, update the active profile on the fly.
-        if let bundleId = activeApp.bundleId {
+        // Skip URL resolution when a forced profile is set (profile hotkey overrides app matching).
+        if forcedProfileId == nil, let bundleId = activeApp.bundleId {
             urlResolutionTask = Task { [weak self] in
                 guard let self else { return }
                 logger.info("URL resolution: starting for bundleId=\(bundleId)")
                 let resolvedURL = await textInsertionService.resolveBrowserURL(bundleId: bundleId)
                 logger.info("URL resolution: resolvedURL=\(resolvedURL ?? "nil"), state=\(String(describing: self.state))")
-                guard state == .recording || state == .paused || state == .processing else {
+                guard state == .recording || state == .processing else {
                     logger.info("URL resolution: skipped - state is \(String(describing: self.state))")
                     return
                 }
@@ -342,8 +319,6 @@ final class DictationViewModel: ObservableObject {
                 logger.info("URL resolution: matched profile '\(refinedProfile.name)'")
                 matchedProfile = refinedProfile
                 activeProfileName = refinedProfile.name
-                let refinedWhisperMode = refinedProfile.whisperModeOverride ?? whisperModeEnabled
-                audioRecordingService.gainMultiplier = refinedWhisperMode ? 4.0 : 1.0
             }
         }
 
@@ -353,23 +328,18 @@ final class DictationViewModel: ObservableObject {
             if audioDuckingEnabled {
                 audioDuckingService.duckAudio(to: Float(audioDuckingLevel))
             }
-            if mediaPauseEnabled {
-                mediaPlaybackService.pausePlayback()
-            }
             state = .recording
             soundService.play(.recordingStarted, enabled: soundFeedbackEnabled)
             partialText = ""
             recordingStartTime = Date()
             startRecordingTimer()
             startStreamingIfSupported()
-            startSilenceDetection()
             EventBus.shared.emit(.recordingStarted(RecordingStartedPayload(
                 appName: capturedActiveApp?.name,
                 bundleIdentifier: capturedActiveApp?.bundleId
             )))
         } catch {
             audioDuckingService.restoreAudio()
-            mediaPlaybackService.resumePlayback()
             soundService.play(.error, enabled: soundFeedbackEnabled)
             showError(error.localizedDescription)
             hotkeyService.cancelDictation()
@@ -409,40 +379,20 @@ final class DictationViewModel: ObservableObject {
         matchedProfile?.cloudModelOverride
     }
 
-    private var effectiveAutoSubmit: Bool {
-        matchedProfile?.autoSubmitEnabled ?? false
-    }
-
     private var effectivePromptAction: PromptAction? {
         if let actionId = matchedProfile?.promptActionId {
             return promptActionService.action(byId: actionId)
-        }
-        if let globalId = settingsViewModel.defaultPromptActionId {
-            return promptActionService.action(byId: globalId)
         }
         return nil
     }
 
     private func stopDictation() {
-        guard state == .recording || state == .paused else { return }
+        guard state == .recording else { return }
 
-        // Capture state before stopping - pause already trimmed via trimTrailingSilence()
-        let wasPaused = (state == .paused)
-        let trailingSilence = audioRecordingService.silenceDuration
         audioDuckingService.restoreAudio()
-        mediaPlaybackService.resumePlayback()
         stopStreaming()
-        stopSilenceDetection()
         stopRecordingTimer()
         var samples = audioRecordingService.stopRecording()
-
-        // Only trim if we weren't paused (pause already trimmed via trimTrailingSilence)
-        if !wasPaused && trailingSilence > 0.3 {
-            let trimCount = Int(trailingSilence * AudioRecordingService.targetSampleRate)
-            if samples.count > trimCount {
-                samples = Array(samples.dropLast(trimCount))
-            }
-        }
 
         // Add silence padding so Whisper can properly finish decoding the last tokens
         let padCount = Int(0.3 * AudioRecordingService.targetSampleRate)
@@ -498,36 +448,11 @@ final class DictationViewModel: ObservableObject {
                     return
                 }
 
-                // Build LLM/translation handler for pipeline
-                let llmHandler: ((String) async throws -> String)?
-                if let promptAction = self.effectivePromptAction {
-                    let pps = self.promptProcessingService
-                    let providerOverride = promptAction.providerType
-                    let modelOverride = promptAction.cloudModel
-                    let prompt = promptAction.prompt
-                    llmHandler = { text in
-                        try await pps.process(
-                            prompt: prompt, text: text,
-                            providerOverride: providerOverride,
-                            cloudModelOverride: modelOverride
-                        )
-                    }
-                } else if let targetCode = translationTarget {
-                    #if canImport(Translation)
-                    if #available(macOS 15, *), let ts = self.translationService as? TranslationService {
-                        llmHandler = { text in
-                            let target = Locale.Language(identifier: targetCode)
-                            return try await ts.translate(text: text, to: target)
-                        }
-                    } else {
-                        llmHandler = nil
-                    }
-                    #else
-                    llmHandler = nil
-                    #endif
-                } else {
-                    llmHandler = nil
-                }
+                let llmHandler = buildLLMHandler(
+                    translationTarget: translationTarget,
+                    detectedLanguage: result.detectedLanguage,
+                    configuredLanguage: language
+                )
 
                 guard !Task.isCancelled else { return }
 
@@ -547,34 +472,12 @@ final class DictationViewModel: ObservableObject {
                 // Route to action plugin or insert text
                 if let actionPluginId = self.effectivePromptAction?.targetActionPluginId,
                    let actionPlugin = PluginManager.shared.actionPlugin(for: actionPluginId) {
-                    let actionContext = ActionContext(
-                        appName: activeApp.name,
-                        bundleIdentifier: activeApp.bundleId,
-                        url: activeApp.url,
-                        language: language,
-                        originalText: result.text
+                    try await executeActionPlugin(
+                        actionPlugin, pluginId: actionPluginId, text: text,
+                        activeApp: activeApp, language: language, originalText: result.text
                     )
-                    let actionResult = try await actionPlugin.execute(input: text, context: actionContext)
-
-                    if actionResult.success {
-                        if let url = actionResult.url {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(url, forType: .string)
-                        }
-                        self.actionFeedbackMessage = actionResult.message
-                        self.actionFeedbackIcon = actionResult.icon ?? "checkmark.circle.fill"
-                        self.actionDisplayDuration = actionResult.displayDuration ?? 3.5
-                        EventBus.shared.emit(.actionCompleted(ActionCompletedPayload(
-                            actionId: actionPluginId, success: true, message: actionResult.message,
-                            url: actionResult.url, appName: activeApp.name, bundleIdentifier: activeApp.bundleId
-                        )))
-                    } else {
-                        throw NSError(domain: "ActionPlugin", code: -1,
-                                      userInfo: [NSLocalizedDescriptionKey: actionResult.message])
-                    }
                 } else {
-                    // Default flow: always insert text (clipboard + Cmd+V)
-                    _ = try await textInsertionService.insertText(text, autoSubmit: effectiveAutoSubmit)
+                    _ = try await textInsertionService.insertText(text)
                     EventBus.shared.emit(.textInserted(TextInsertedPayload(
                         text: text,
                         appName: activeApp.name,
@@ -632,6 +535,7 @@ final class DictationViewModel: ObservableObject {
                 soundService.play(.error, enabled: soundFeedbackEnabled)
                 showError(error.localizedDescription)
                 matchedProfile = nil
+                forcedProfileId = nil
                 capturedActiveApp = nil
                 activeProfileName = nil
             }
@@ -654,24 +558,13 @@ final class DictationViewModel: ObservableObject {
     }
 
     func setHotkey(_ hotkey: UnifiedHotkey, for slot: HotkeySlotType) {
-        let label = HotkeyService.displayName(for: hotkey)
-        switch slot {
-        case .hybrid: hybridHotkeyLabel = label
-        case .pushToTalk: pttHotkeyLabel = label
-        case .toggle: toggleHotkeyLabel = label
-        case .promptPalette: promptPaletteHotkeyLabel = label
-        }
         hotkeyService.updateHotkey(hotkey, for: slot)
+        hotkeyLabelsVersion += 1
     }
 
     func clearHotkey(for slot: HotkeySlotType) {
-        switch slot {
-        case .hybrid: hybridHotkeyLabel = ""
-        case .pushToTalk: pttHotkeyLabel = ""
-        case .toggle: toggleHotkeyLabel = ""
-        case .promptPalette: promptPaletteHotkeyLabel = ""
-        }
         hotkeyService.clearHotkey(for: slot)
+        hotkeyLabelsVersion += 1
     }
 
     func isHotkeyAssigned(_ hotkey: UnifiedHotkey, excluding: HotkeySlotType) -> HotkeySlotType? {
@@ -703,6 +596,22 @@ final class DictationViewModel: ObservableObject {
         }
     }
 
+    /// Register profile hotkeys after app is fully initialized.
+    /// Called from ServiceContainer.initialize() to avoid early monitor setup.
+    func registerInitialProfileHotkeys() {
+        syncProfileHotkeys(profileService.profiles)
+    }
+
+    private func syncProfileHotkeys(_ profiles: [Profile]) {
+        let entries = profiles
+            .filter { $0.isEnabled }
+            .compactMap { profile -> (id: UUID, hotkey: UnifiedHotkey)? in
+                guard let hotkey = profile.hotkey else { return nil }
+                return (id: profile.id, hotkey: hotkey)
+            }
+        hotkeyService.registerProfileHotkeys(entries)
+    }
+
     private func resetDictationState() {
         errorResetTask?.cancel()
         insertingResetTask?.cancel()
@@ -712,11 +621,104 @@ final class DictationViewModel: ObservableObject {
         state = .idle
         partialText = ""
         matchedProfile = nil
+        forcedProfileId = nil
         capturedActiveApp = nil
         activeProfileName = nil
         actionFeedbackMessage = nil
         actionFeedbackIcon = nil
         actionDisplayDuration = 3.5
+    }
+
+    // MARK: - Shared Helpers
+
+    /// Builds an LLM handler for the post-processing pipeline.
+    /// Priority: prompt action > translation > nil.
+    private func buildLLMHandler(
+        translationTarget: String?,
+        detectedLanguage: String?,
+        configuredLanguage: String?
+    ) -> ((String) async throws -> String)? {
+        if let promptAction = effectivePromptAction {
+            let pps = promptProcessingService
+            let providerOverride = promptAction.providerType
+            let modelOverride = promptAction.cloudModel
+            let prompt = promptAction.prompt
+            return { text in
+                try await pps.process(
+                    prompt: prompt, text: text,
+                    providerOverride: providerOverride,
+                    cloudModelOverride: modelOverride
+                )
+            }
+        }
+
+        #if canImport(Translation)
+        if let targetCode = translationTarget {
+            if #available(macOS 15, *), let ts = translationService as? TranslationService {
+                let sourceRaw = detectedLanguage ?? configuredLanguage
+                let sourceNormalized = TranslationService.normalizedLanguageIdentifier(from: sourceRaw)
+                if let sourceRaw {
+                    if let sourceNormalized {
+                        if sourceRaw.caseInsensitiveCompare(sourceNormalized) != .orderedSame {
+                            logger.info("Translation source normalized \(sourceRaw, privacy: .public) -> \(sourceNormalized, privacy: .public)")
+                        }
+                    } else {
+                        logger.warning("Translation source language \(sourceRaw, privacy: .public) invalid, using auto source")
+                    }
+                }
+                let sourceLanguage = sourceNormalized.map { Locale.Language(identifier: $0) }
+                return { text in
+                    guard let targetNormalized = TranslationService.normalizedLanguageIdentifier(from: targetCode) else {
+                        logger.error("Translation target language invalid: \(targetCode, privacy: .public)")
+                        return text
+                    }
+                    if targetCode.caseInsensitiveCompare(targetNormalized) != .orderedSame {
+                        logger.info("Translation target normalized \(targetCode, privacy: .public) -> \(targetNormalized, privacy: .public)")
+                    }
+                    let target = Locale.Language(identifier: targetNormalized)
+                    return try await ts.translate(text: text, to: target, source: sourceLanguage)
+                }
+            }
+        }
+        #endif
+
+        return nil
+    }
+
+    /// Executes an action plugin and handles its result (feedback, clipboard URL, events).
+    private func executeActionPlugin(
+        _ plugin: any ActionPlugin,
+        pluginId: String,
+        text: String,
+        activeApp: (name: String?, bundleId: String?, url: String?),
+        language: String? = nil,
+        originalText: String? = nil
+    ) async throws {
+        let actionContext = ActionContext(
+            appName: activeApp.name,
+            bundleIdentifier: activeApp.bundleId,
+            url: activeApp.url,
+            language: language,
+            originalText: originalText ?? text
+        )
+        let actionResult = try await plugin.execute(input: text, context: actionContext)
+
+        guard actionResult.success else {
+            throw NSError(domain: "ActionPlugin", code: -1,
+                          userInfo: [NSLocalizedDescriptionKey: actionResult.message])
+        }
+
+        if let url = actionResult.url {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(url, forType: .string)
+        }
+        actionFeedbackMessage = actionResult.message
+        actionFeedbackIcon = actionResult.icon ?? "checkmark.circle.fill"
+        actionDisplayDuration = actionResult.displayDuration ?? 3.5
+        EventBus.shared.emit(.actionCompleted(ActionCompletedPayload(
+            actionId: pluginId, success: true, message: actionResult.message,
+            url: actionResult.url, appName: activeApp.name, bundleIdentifier: activeApp.bundleId
+        )))
     }
 
     // MARK: - Standalone Prompt Palette
@@ -812,28 +814,18 @@ final class DictationViewModel: ObservableObject {
                    let actionPlugin = PluginManager.shared.actionPlugin(for: actionPluginId) {
                     let browserInfo = await ctx.browserInfoTask?.value
                     let resolvedUrl = browserInfo?.url ?? ctx.activeApp.url
-                    let actionContext = ActionContext(
-                        appName: browserInfo?.title ?? ctx.activeApp.name,
-                        bundleIdentifier: ctx.activeApp.bundleId,
-                        url: resolvedUrl,
-                        originalText: ctx.text
+                    let resolvedApp = (name: browserInfo?.title ?? ctx.activeApp.name,
+                                       bundleId: ctx.activeApp.bundleId, url: resolvedUrl)
+                    try await executeActionPlugin(
+                        actionPlugin, pluginId: actionPluginId, text: result,
+                        activeApp: resolvedApp, originalText: ctx.text
                     )
-                    let actionResult = try await actionPlugin.execute(input: result, context: actionContext)
-                    if actionResult.success {
-                        if let url = actionResult.url {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(url, forType: .string)
-                        }
-                        soundService.play(.transcriptionSuccess, enabled: soundFeedbackEnabled)
-                        showNotchFeedback(
-                            message: actionResult.message,
-                            icon: actionResult.icon ?? "checkmark.circle.fill",
-                            duration: actionResult.displayDuration ?? 4
-                        )
-                    } else {
-                        throw NSError(domain: "ActionPlugin", code: -1,
-                                      userInfo: [NSLocalizedDescriptionKey: actionResult.message])
-                    }
+                    soundService.play(.transcriptionSuccess, enabled: soundFeedbackEnabled)
+                    showNotchFeedback(
+                        message: actionFeedbackMessage ?? "Done",
+                        icon: actionFeedbackIcon ?? "checkmark.circle.fill",
+                        duration: actionDisplayDuration
+                    )
                     return
                 }
 
@@ -913,6 +905,10 @@ final class DictationViewModel: ObservableObject {
         if let overrideId = effectiveEngineOverrideId, modelManager.isPluginEngine(overrideId) {
             return
         }
+        // Cloud main engine selected (no override) - no local streaming preview
+        if effectiveEngineOverrideId == nil, modelManager.isCloudEngineSelected {
+            return
+        }
         let resolvedEngine = modelManager.resolveEngine(override: effectiveEngineOverrideId, cloudModelOverride: effectiveCloudModelOverride)
         guard let engine = resolvedEngine, engine.supportsStreaming else { return }
 
@@ -928,7 +924,7 @@ final class DictationViewModel: ObservableObject {
             // Initial delay before first streaming attempt
             try? await Task.sleep(for: .seconds(1.5))
 
-            while !Task.isCancelled, self.state == .recording || self.state == .paused {
+            while !Task.isCancelled, self.state == .recording {
                 let buffer = self.audioRecordingService.getRecentBuffer(maxDuration: 3600)
                 let bufferDuration = Double(buffer.count) / 16000.0
 
@@ -1021,54 +1017,6 @@ final class DictationViewModel: ObservableObject {
 
         // Very different result — accept the new text to avoid freezing the preview
         return new
-    }
-
-    // MARK: - Silence Detection
-
-    private func startSilenceDetection() {
-        stopSilenceDetection()
-
-        logger.info("startSilenceDetection: starting timer, hotkeyMode=\(String(describing: self.hotkeyMode))")
-        silenceTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.checkSilenceState()
-            }
-        }
-    }
-
-    private func checkSilenceState() {
-        // Only auto-stop in toggle mode, not push-to-talk
-        // Read directly from hotkeyService — self.hotkeyMode may lag behind due to Combine async dispatch
-        guard hotkeyService.currentMode == .toggle else { return }
-
-        let duration = audioRecordingService.silenceDuration
-        let threshold = audioRecordingService.silenceAutoStopDuration
-
-        if state == .recording {
-            if duration >= threshold {
-                logger.info("Silence detected: \(duration)s >= \(threshold)s, pauseEnabled=\(self.silencePauseEnabled)")
-                if silencePauseEnabled {
-                    audioRecordingService.pauseRecording()
-                    state = .paused
-                } else {
-                    audioRecordingService.didAutoStop = true
-                    stopDictation()
-                    hotkeyService.cancelDictation()
-                }
-            }
-        } else if state == .paused {
-            if !audioRecordingService.isSilent {
-                logger.info("Speech resumed - unpausing")
-                audioRecordingService.resumeRecording()
-                state = .recording
-            }
-        }
-    }
-
-    private func stopSilenceDetection() {
-        silenceTimer?.invalidate()
-        silenceTimer = nil
     }
 
     private func startRecordingTimer() {

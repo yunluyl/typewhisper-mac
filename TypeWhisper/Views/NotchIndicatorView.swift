@@ -1,5 +1,4 @@
 import SwiftUI
-import IOKit.ps
 
 /// Notch-extending indicator that visually expands the MacBook notch area.
 /// Three-zone layout: left ear | center (notch spacer) | right ear.
@@ -11,7 +10,6 @@ struct NotchIndicatorView: View {
     @ObservedObject var geometry: NotchGeometry
     @State private var textExpanded = false
     @State private var dotPulse = false
-    @State private var pausePulse = false
 
     private let extensionWidth: CGFloat = 60
     /// Consistent horizontal padding for all expanded content (lists, results, text).
@@ -35,39 +33,6 @@ struct NotchIndicatorView: View {
         return closedWidth
     }
 
-    // MARK: - Audio-reactive glow
-
-    private var glowColor: Color {
-        if case .paused = viewModel.state {
-            return Color(red: 1.0, green: 0.6, blue: 0.2) // amber/orange
-        }
-        return Color(red: 0.3, green: 0.5, blue: 1.0) // blue
-    }
-
-    private var glowOpacity: Double {
-        switch viewModel.state {
-        case .recording:
-            return max(0.4, min(Double(viewModel.audioLevel) * 3.5, 1.0))
-        case .paused:
-            return pausePulse ? 0.8 : 0.3
-        default:
-            return 0
-        }
-    }
-
-    private var glowRadius: CGFloat {
-        switch viewModel.state {
-        case .recording:
-            return max(10, CGFloat(viewModel.audioLevel) * 40 + 6)
-        case .paused:
-            return pausePulse ? 22 : 10
-        case .promptProcessing:
-            return 12
-        default:
-            return 0
-        }
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Three-zone status bar
@@ -75,7 +40,7 @@ struct NotchIndicatorView: View {
                 .frame(height: geometry.notchHeight)
 
             // Expandable partial text area
-            if viewModel.state == .recording || viewModel.state == .paused {
+            if viewModel.state == .recording {
                 ScrollViewReader { proxy in
                     ScrollView(.vertical, showsIndicators: true) {
                         Text(viewModel.partialText)
@@ -124,8 +89,6 @@ struct NotchIndicatorView: View {
             topCornerRadius: isExpanded ? 19 : 6,
             bottomCornerRadius: isExpanded ? 24 : 14
         ))
-        // Blue glow that reacts to audio level
-        .shadow(color: glowColor.opacity(glowOpacity), radius: glowRadius)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .preferredColorScheme(.dark)
         .animation(.easeInOut(duration: 0.3), value: textExpanded)
@@ -136,19 +99,14 @@ struct NotchIndicatorView: View {
                 withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
                     dotPulse = true
                 }
-                pausePulse = false
-            } else if viewModel.state == .paused {
-                dotPulse = false
-                withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
-                    pausePulse = true
-                }
+
             } else {
                 dotPulse = false
-                pausePulse = false
+
                 textExpanded = false
             }
         }
-        .animation(.easeInOut(duration: 1.5), value: pausePulse)
+        .animation(.easeInOut(duration: 1.0), value: dotPulse)
     }
 
     // MARK: - Status bar (three-zone layout)
@@ -183,7 +141,7 @@ struct NotchIndicatorView: View {
         switch viewModel.state {
         case .idle:
             Color.clear
-        case .recording, .paused:
+        case .recording:
             recordingContent(for: content)
         case .processing:
             if side == .leading {
@@ -219,13 +177,11 @@ struct NotchIndicatorView: View {
         switch content {
         case .indicator:
             Circle()
-                .fill(viewModel.state == .paused ? Color.orange : Color.red)
+                .fill(Color.red)
                 .frame(width: 6, height: 6)
-                .scaleEffect(viewModel.state == .paused ? (pausePulse ? 1.3 : 0.8) : 1.0 + CGFloat(viewModel.audioLevel) * 0.8)
-                .shadow(color: viewModel.state == .paused
-                    ? .orange.opacity(pausePulse ? 0.8 : 0.2)
-                    : .yellow.opacity(dotPulse ? 0.8 : 0.2),
-                    radius: viewModel.state == .paused ? (pausePulse ? 6 : 2) : (dotPulse ? 6 : 2))
+                .scaleEffect(1.0 + CGFloat(viewModel.audioLevel) * 0.8)
+                .shadow(color: .yellow.opacity(dotPulse ? 0.8 : 0.2),
+                    radius: dotPulse ? 6 : 2)
         case .timer:
             Text(formatDuration(viewModel.recordingDuration))
                 .font(.system(size: 10, weight: .medium).monospacedDigit())
@@ -236,55 +192,19 @@ struct NotchIndicatorView: View {
                 isSetup: viewModel.recordingDuration < 0.5 && viewModel.audioLevel < 0.05,
                 compact: true
             )
-        case .clock:
-            TimelineView(.periodic(from: .now, by: 1)) { context in
-                Text(context.date, format: .dateTime.hour().minute())
-                    .font(.system(size: 10, weight: .medium).monospacedDigit())
-                    .foregroundStyle(.white.opacity(0.6))
+        case .profile:
+            if let name = viewModel.activeProfileName {
+                Text(name)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(.white.opacity(0.2), in: Capsule())
+            } else {
+                Color.clear
             }
-        case .battery:
-            batteryView
         case .none:
             Color.clear
-        }
-    }
-
-    // MARK: - Battery
-
-    @ViewBuilder
-    private var batteryView: some View {
-        TimelineView(.periodic(from: .now, by: 60)) { _ in
-            if let level = Self.readBatteryLevel() {
-                HStack(spacing: 3) {
-                    Image(systemName: Self.batteryIconName(level: level))
-                        .font(.system(size: 10))
-                    Text("\(level)%")
-                        .font(.system(size: 10, weight: .medium).monospacedDigit())
-                }
-                .foregroundStyle(.white.opacity(0.6))
-            }
-        }
-    }
-
-    nonisolated private static func readBatteryLevel() -> Int? {
-        let snapshot = IOPSCopyPowerSourcesInfo().takeRetainedValue()
-        let sources = IOPSCopyPowerSourcesList(snapshot).takeRetainedValue() as Array
-        for source in sources {
-            if let info = IOPSGetPowerSourceDescription(snapshot, source)?.takeUnretainedValue() as? [String: Any],
-               let capacity = info[kIOPSCurrentCapacityKey] as? Int {
-                return capacity
-            }
-        }
-        return nil
-    }
-
-    nonisolated private static func batteryIconName(level: Int) -> String {
-        switch level {
-        case 0..<13: return "battery.0percent"
-        case 13..<38: return "battery.25percent"
-        case 38..<63: return "battery.50percent"
-        case 63..<88: return "battery.75percent"
-        default: return "battery.100percent"
         }
     }
 
