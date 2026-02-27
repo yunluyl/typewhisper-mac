@@ -36,6 +36,42 @@
       "size": 199829,
       "downloadURL": "https://github.com/TypeWhisper/typewhisper-mac/releases/download/plugin-webhook-v1.0.0/WebhookPlugin.zip",
       "iconSystemName": "arrow.up.forward.app"
+    },
+    {
+      "id": "com.typewhisper.groq",
+      "name": "Groq",
+      "version": "1.0.0",
+      "minHostVersion": "0.9.0",
+      "author": "TypeWhisper",
+      "description": "Cloud transcription and LLM via Groq API. Fast inference, requires API key.",
+      "category": "transcription",
+      "size": 0,
+      "downloadURL": "",
+      "iconSystemName": "bolt.fill"
+    },
+    {
+      "id": "com.typewhisper.openai",
+      "name": "OpenAI",
+      "version": "1.0.0",
+      "minHostVersion": "0.9.0",
+      "author": "TypeWhisper",
+      "description": "Cloud transcription and LLM via OpenAI API. Whisper and GPT models, requires API key.",
+      "category": "transcription",
+      "size": 0,
+      "downloadURL": "",
+      "iconSystemName": "brain"
+    },
+    {
+      "id": "com.typewhisper.gemini",
+      "name": "Gemini",
+      "version": "1.0.0",
+      "minHostVersion": "0.9.0",
+      "author": "TypeWhisper",
+      "description": "LLM provider via Google Gemini API. Requires API key.",
+      "category": "llm",
+      "size": 0,
+      "downloadURL": "",
+      "iconSystemName": "sparkles"
     }
   ]
 }
