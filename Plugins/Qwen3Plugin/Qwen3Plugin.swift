@@ -71,6 +71,20 @@ final class Qwen3Plugin: NSObject, TranscriptionEnginePlugin, @unchecked Sendabl
             .map { PluginModelInfo(id: $0.id, displayName: $0.displayName) }
     }
 
+    var supportedLanguages: [String] {
+        [
+            "af", "am", "ar", "az", "be", "bg", "bn", "bs", "ca", "cs",
+            "cy", "da", "de", "el", "en", "es", "et", "fa", "fi", "fr",
+            "gl", "gu", "ha", "he", "hi", "hr", "hu", "hy", "id", "is",
+            "it", "ja", "jw", "ka", "kk", "km", "kn", "ko", "lo", "lt",
+            "lv", "mk", "ml", "mn", "mr", "ms", "my", "ne", "nl", "no",
+            "pa", "pl", "ps", "pt", "ro", "ru", "sd", "si", "sk", "sl",
+            "sn", "so", "sq", "sr", "su", "sv", "sw", "ta", "te", "tg",
+            "th", "tk", "tl", "tr", "tt", "uk", "ur", "uz", "vi", "yo",
+            "yue", "zh",
+        ]
+    }
+
     var selectedModelId: String? { _selectedModelId }
 
     func selectModel(_ modelId: String) {
