@@ -8,6 +8,9 @@
       "minHostVersion": "0.11",
       "author": "TypeWhisper",
       "description": "Local speech-to-text powered by MLX on Apple Silicon. 30 languages, no API key required.",
+      "descriptions": {
+        "de": "Lokale Spracherkennung mit MLX auf Apple Silicon. 30 Sprachen, kein API-Key nötig."
+      },
       "category": "transcription",
       "size": 28776164,
       "downloadURL": "https://github.com/TypeWhisper/typewhisper-mac/releases/download/plugin-qwen3-v1.0.3/Qwen3Plugin.zip",
@@ -20,6 +23,9 @@
       "minHostVersion": "0.9.0",
       "author": "TypeWhisper",
       "description": "Create Linear issues from transcribed or processed text. Requires a Linear API key.",
+      "descriptions": {
+        "de": "Linear-Issues aus transkribiertem oder verarbeitetem Text erstellen. Erfordert einen Linear-API-Key."
+      },
       "category": "action",
       "size": 220656,
       "downloadURL": "https://github.com/TypeWhisper/typewhisper-mac/releases/download/plugin-linear-v1.0.0/LinearPlugin.zip",
@@ -33,6 +39,9 @@
       "minHostVersion": "0.9.0",
       "author": "TypeWhisper",
       "description": "Send transcribed or processed text to any webhook URL via HTTP POST.",
+      "descriptions": {
+        "de": "Transkribierten oder verarbeiteten Text per HTTP POST an eine beliebige Webhook-URL senden."
+      },
       "category": "post-processor",
       "size": 199829,
       "downloadURL": "https://github.com/TypeWhisper/typewhisper-mac/releases/download/plugin-webhook-v1.0.0/WebhookPlugin.zip",
@@ -45,6 +54,9 @@
       "minHostVersion": "0.9.0",
       "author": "TypeWhisper",
       "description": "Cloud transcription and LLM via Groq API. Fast inference, requires API key.",
+      "descriptions": {
+        "de": "Cloud-Transkription und LLM über die Groq-API. Schnelle Inferenz, erfordert API-Key."
+      },
       "category": "transcription",
       "size": 107181,
       "downloadURL": "https://github.com/TypeWhisper/typewhisper-mac/releases/download/plugin-groq-v1.0.2/GroqPlugin.zip",
@@ -58,6 +70,9 @@
       "minHostVersion": "0.9.0",
       "author": "TypeWhisper",
       "description": "Cloud transcription and LLM via OpenAI API. Whisper and GPT models, requires API key.",
+      "descriptions": {
+        "de": "Cloud-Transkription und LLM über die OpenAI-API. Whisper- und GPT-Modelle, erfordert API-Key."
+      },
       "category": "transcription",
       "size": 108605,
       "downloadURL": "https://github.com/TypeWhisper/typewhisper-mac/releases/download/plugin-openai-v1.0.2/OpenAIPlugin.zip",
@@ -71,6 +86,9 @@
       "minHostVersion": "0.9.0",
       "author": "TypeWhisper",
       "description": "LLM provider via Google Gemini API. Requires API key.",
+      "descriptions": {
+        "de": "LLM-Anbieter über die Google Gemini API. Erfordert API-Key."
+      },
       "category": "llm",
       "size": 102521,
       "downloadURL": "https://github.com/TypeWhisper/typewhisper-mac/releases/download/plugin-gemini-v1.0.0/GeminiPlugin.zip",
@@ -84,6 +102,9 @@
       "minHostVersion": "0.11",
       "author": "TypeWhisper",
       "description": "Local speech-to-text powered by WhisperKit. 7 model sizes, 99 languages, streaming support.",
+      "descriptions": {
+        "de": "Lokale Spracherkennung mit WhisperKit. 7 Modellgrössen, 99 Sprachen, Streaming-Unterstützung."
+      },
       "category": "transcription",
       "size": 2973052,
       "downloadURL": "https://github.com/TypeWhisper/typewhisper-mac/releases/download/plugin-whisperkit-v1.0.0/WhisperKitPlugin.zip",
@@ -96,6 +117,9 @@
       "minHostVersion": "0.11",
       "author": "TypeWhisper",
       "description": "Local speech-to-text powered by NVIDIA Parakeet TDT. Fast and accurate, 25 languages.",
+      "descriptions": {
+        "de": "Lokale Spracherkennung mit NVIDIA Parakeet TDT. Schnell und präzise, 25 Sprachen."
+      },
       "category": "transcription",
       "size": 4031883,
       "downloadURL": "https://github.com/TypeWhisper/typewhisper-mac/releases/download/plugin-parakeet-v1.0.0/ParakeetPlugin.zip",
@@ -108,6 +132,9 @@
       "minHostVersion": "0.11",
       "author": "TypeWhisper",
       "description": "On-device speech recognition using Apple's Speech framework. Requires macOS 26+, streaming support.",
+      "descriptions": {
+        "de": "Gerätebasierte Spracherkennung mit Apples Speech-Framework. Erfordert macOS 26+, Streaming-Unterstützung."
+      },
       "category": "transcription",
       "size": 170067,
       "downloadURL": "https://github.com/TypeWhisper/typewhisper-mac/releases/download/plugin-speechanalyzer-v1.0.1/SpeechAnalyzerPlugin.zip",
