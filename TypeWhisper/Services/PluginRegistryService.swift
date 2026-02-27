@@ -131,22 +131,13 @@ final class PluginRegistryService: ObservableObject {
         installStates[plugin.id] = .downloading(0)
 
         do {
-            let (asyncBytes, response) = try await URLSession.shared.bytes(from: url)
-            let totalBytes = response.expectedContentLength
-            var data = Data()
-            if totalBytes > 0 {
-                data.reserveCapacity(Int(totalBytes))
-            }
-
-            var received: Int64 = 0
-            for try await byte in asyncBytes {
-                data.append(byte)
-                received += 1
-                if totalBytes > 0 && received % 65536 == 0 {
-                    let progress = Double(received) / Double(totalBytes)
-                    installStates[plugin.id] = .downloading(progress)
+            let delegate = DownloadProgressDelegate { [weak self] progress in
+                Task { @MainActor in
+                    self?.installStates[plugin.id] = .downloading(progress)
                 }
             }
+            let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+            let (tempURL, _) = try await session.download(from: url)
 
             installStates[plugin.id] = .extracting
 
@@ -156,7 +147,7 @@ final class PluginRegistryService: ObservableObject {
             defer { try? FileManager.default.removeItem(at: tempDir) }
 
             let zipPath = tempDir.appendingPathComponent("plugin.zip")
-            try data.write(to: zipPath)
+            try FileManager.default.moveItem(at: tempURL, to: zipPath)
 
             let extractDir = tempDir.appendingPathComponent("extracted", isDirectory: true)
             try FileManager.default.createDirectory(at: extractDir, withIntermediateDirectories: true)
@@ -273,5 +264,31 @@ final class PluginRegistryService: ObservableObject {
         formatter.allowedUnits = [.useMB, .useGB]
         formatter.countStyle = .file
         return formatter.string(fromByteCount: bytes)
+    }
+}
+
+// MARK: - Download Progress Delegate
+
+private final class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate, Sendable {
+    private let onProgress: @Sendable (Double) -> Void
+
+    init(onProgress: @escaping @Sendable (Double) -> Void) {
+        self.onProgress = onProgress
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        downloadTask: URLSessionDownloadTask,
+        didWriteData bytesWritten: Int64,
+        totalBytesWritten: Int64,
+        totalBytesExpectedToWrite: Int64
+    ) {
+        guard totalBytesExpectedToWrite > 0 else { return }
+        let progress = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
+        onProgress(progress)
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+        // Handled by the async download(from:) API
     }
 }
