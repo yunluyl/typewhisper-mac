@@ -9,7 +9,7 @@
       "author": "TypeWhisper",
       "description": "Local speech-to-text powered by MLX on Apple Silicon. 30 languages, no API key required.",
       "category": "transcription",
-      "size": 115343360,
+      "size": 13921891,
       "downloadURL": "https://github.com/TypeWhisper/typewhisper-mac/releases/download/plugin-qwen3-v1.0.0/Qwen3Plugin.zip",
       "iconSystemName": "cpu"
     }
