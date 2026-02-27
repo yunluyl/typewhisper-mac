@@ -501,11 +501,11 @@ private struct WhisperKitSettingsView: View {
     private func phaseText(_ phase: String) -> String {
         switch phase {
         case "prewarming":
-            "Optimizing for Neural Engine..."
+            String(localized: "Optimizing for Neural Engine...")
         case "loading":
-            "Loading model..."
+            String(localized: "Loading model...")
         default:
-            "Loading..."
+            String(localized: "Loading...")
         }
     }
 }

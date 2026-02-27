@@ -12,9 +12,9 @@ final class HistoryService: ObservableObject {
     private let modelContainer: ModelContainer
     private let modelContext: ModelContext
 
-    var totalRecords: Int { records.count }
-    var totalWords: Int { records.reduce(0) { $0 + $1.wordsCount } }
-    var totalDuration: Double { records.reduce(0) { $0 + $1.durationSeconds } }
+    private(set) var totalRecords: Int = 0
+    private(set) var totalWords: Int = 0
+    private(set) var totalDuration: Double = 0
 
     init() {
         let schema = Schema([TranscriptionRecord.self])
@@ -73,6 +73,7 @@ final class HistoryService: ObservableObject {
 
     func updateRecord(_ record: TranscriptionRecord, finalText: String) {
         record.finalText = finalText
+        record.wordsCount = finalText.split(separator: " ").count
         save()
         fetchRecords()
     }
@@ -139,6 +140,25 @@ final class HistoryService: ObservableObject {
         } catch {
             records = []
         }
+        migrateWordsCountIfNeeded()
+        updateAggregates()
+    }
+
+    private func migrateWordsCountIfNeeded() {
+        var needsSave = false
+        for record in records where record.wordsCount == 0 && !record.finalText.isEmpty {
+            record.wordsCount = record.finalText.split(separator: " ").count
+            needsSave = true
+        }
+        if needsSave {
+            save()
+        }
+    }
+
+    private func updateAggregates() {
+        totalRecords = records.count
+        totalWords = records.reduce(0) { $0 + $1.wordsCount }
+        totalDuration = records.reduce(0) { $0 + $1.durationSeconds }
     }
 
     private func save() {

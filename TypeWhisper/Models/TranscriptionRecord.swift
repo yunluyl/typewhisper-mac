@@ -14,8 +14,8 @@ final class TranscriptionRecord {
     var language: String?
     var engineUsed: String
     var modelUsed: String?
+    var wordsCount: Int = 0
 
-    var wordsCount: Int { finalText.split(separator: " ").count }
     var preview: String { String(finalText.prefix(100)) }
 
     /// Extracts the domain from appURL (e.g. "https://github.com/foo" → "github.com")
@@ -50,5 +50,6 @@ final class TranscriptionRecord {
         self.language = language
         self.engineUsed = engineUsed
         self.modelUsed = modelUsed
+        self.wordsCount = finalText.split(separator: " ").count
     }
 }
