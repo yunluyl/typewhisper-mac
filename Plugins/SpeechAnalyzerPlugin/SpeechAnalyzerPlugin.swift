@@ -340,6 +340,7 @@ enum SpeechModelState: Equatable {
 @available(macOS 26, *)
 private struct SpeechAnalyzerSettingsView: View {
     let plugin: SpeechAnalyzerPlugin
+    private let bundle = Bundle(for: SpeechAnalyzerPlugin.self)
     @State private var models: [SpeechModelDef] = []
     @State private var modelState: SpeechModelState = .notLoaded
     @State private var loadedModelId: String?
@@ -356,7 +357,7 @@ private struct SpeechAnalyzerSettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("On-device speech recognition via Apple's Speech framework with streaming support. Select a language model below - only one can be active at a time.")
+            Text("On-device speech recognition via Apple's Speech framework with streaming support. Select a language model below - only one can be active at a time.", bundle: bundle)
                 .font(.callout)
                 .foregroundStyle(.secondary)
 
@@ -365,12 +366,12 @@ private struct SpeechAnalyzerSettingsView: View {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                     let modelName = models.first(where: { $0.id == loadedId })?.displayName ?? loadedId
-                    Text("Active: \(modelName)")
+                    Text("Active: \(modelName)", bundle: bundle)
                         .font(.callout)
 
                     Spacer()
 
-                    Button("Unload") {
+                    Button(String(localized: "Unload", bundle: bundle)) {
                         plugin.unloadModel()
                         syncState()
                     }
@@ -385,7 +386,7 @@ private struct SpeechAnalyzerSettingsView: View {
                 HStack(spacing: 8) {
                     ProgressView()
                         .controlSize(.small)
-                    Text("Downloading language model...")
+                    Text("Downloading language model...", bundle: bundle)
                         .font(.callout)
                 }
             }
@@ -402,14 +403,14 @@ private struct SpeechAnalyzerSettingsView: View {
 
             Divider()
 
-            TextField("Search languages...", text: $searchText)
+            TextField(String(localized: "Search languages...", bundle: bundle), text: $searchText)
                 .textFieldStyle(.roundedBorder)
 
             if models.isEmpty {
                 HStack(spacing: 8) {
                     ProgressView()
                         .controlSize(.small)
-                    Text("Loading available languages...")
+                    Text("Loading available languages...", bundle: bundle)
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity)
@@ -453,7 +454,7 @@ private struct SpeechAnalyzerSettingsView: View {
                     .foregroundStyle(.green)
                     .font(.caption)
             } else {
-                Button("Select") {
+                Button(String(localized: "Select", bundle: bundle)) {
                     Task {
                         await plugin.loadModel(modelDef)
                         syncState()

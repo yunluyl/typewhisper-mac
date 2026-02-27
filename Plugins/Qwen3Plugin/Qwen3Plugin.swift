@@ -387,6 +387,7 @@ enum QwenTranscriptGuard {
 
 private struct Qwen3SettingsView: View {
     let plugin: Qwen3Plugin
+    private let bundle = Bundle(for: Qwen3Plugin.self)
     @State private var modelState: Qwen3ModelState = .notLoaded
     @State private var selectedModelId: String = ""
 
@@ -395,7 +396,7 @@ private struct Qwen3SettingsView: View {
             Text("Qwen3 ASR (MLX)")
                 .font(.headline)
 
-            Text("Local speech-to-text powered by MLX on Apple Silicon. 30 languages, no API key required.")
+            Text("Local speech-to-text powered by MLX on Apple Silicon. 30 languages, no API key required.", bundle: bundle)
                 .font(.callout)
                 .foregroundStyle(.secondary)
 
@@ -403,7 +404,7 @@ private struct Qwen3SettingsView: View {
 
             // Model Selection
             VStack(alignment: .leading, spacing: 8) {
-                Text("Model")
+                Text("Model", bundle: bundle)
                     .font(.subheadline)
                     .fontWeight(.medium)
 
@@ -456,7 +457,7 @@ private struct Qwen3SettingsView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
-                    Button("Unload") {
+                    Button(String(localized: "Unload", bundle: bundle)) {
                         plugin.unloadModel()
                         plugin.deleteModelFiles(modelDef)
                         modelState = plugin.modelState
@@ -465,7 +466,7 @@ private struct Qwen3SettingsView: View {
                     .controlSize(.small)
                 }
             } else {
-                Button("Download & Load") {
+                Button(String(localized: "Download & Load", bundle: bundle)) {
                     selectedModelId = modelDef.id
                     Task {
                         try? await plugin.loadModel(modelDef)

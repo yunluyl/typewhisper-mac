@@ -220,17 +220,19 @@ struct ExampleWebhookSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var editingWebhook: ExampleWebhookConfig?
 
+    private let bundle = Bundle(for: ExampleWebhookService.self)
+
     var body: some View {
         VStack(spacing: 0) {
             // Toolbar
             HStack {
-                Text("Webhook Notifications")
+                Text("Webhook Notifications", bundle: bundle)
                     .font(.headline)
                 Spacer()
                 Button {
                     service.addWebhook(ExampleWebhookConfig())
                 } label: {
-                    Label("Add Webhook", systemImage: "plus")
+                    Label(String(localized: "Add Webhook", bundle: bundle), systemImage: "plus")
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
@@ -242,9 +244,9 @@ struct ExampleWebhookSettingsView: View {
 
             if service.webhooks.isEmpty {
                 ContentUnavailableView {
-                    Label("No Webhooks", systemImage: "arrow.up.right.circle")
+                    Label(String(localized: "No Webhooks", bundle: bundle), systemImage: "arrow.up.right.circle")
                 } description: {
-                    Text("Add a webhook to send transcription data to external services.")
+                    Text("Add a webhook to send transcription data to external services.", bundle: bundle)
                 }
                 .frame(maxHeight: .infinity)
             } else {
@@ -256,7 +258,7 @@ struct ExampleWebhookSettingsView: View {
                     }
 
                     if !service.deliveryLog.isEmpty {
-                        Section("Delivery Log") {
+                        Section(String(localized: "Delivery Log", bundle: bundle)) {
                             ForEach(service.deliveryLog) { entry in
                                 DeliveryLogRow(entry: entry)
                             }
@@ -270,7 +272,7 @@ struct ExampleWebhookSettingsView: View {
 
             HStack {
                 Spacer()
-                Button("Done") {
+                Button(String(localized: "Done", bundle: bundle)) {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
@@ -297,6 +299,8 @@ private struct WebhookRow: View {
     let webhook: ExampleWebhookConfig
     let service: ExampleWebhookService
     let onEdit: () -> Void
+
+    private let bundle = Bundle(for: ExampleWebhookService.self)
 
     var body: some View {
         HStack {
@@ -352,6 +356,8 @@ private struct WebhookRow: View {
 private struct DeliveryLogRow: View {
     let entry: ExampleDeliveryLogEntry
 
+    private let bundle = Bundle(for: ExampleWebhookService.self)
+
     var body: some View {
         HStack {
             Image(systemName: entry.success ? "checkmark.circle.fill" : "xmark.circle.fill")
@@ -387,11 +393,15 @@ private struct ExampleWebhookEditView: View {
     let onSave: (ExampleWebhookConfig) -> Void
     let onCancel: () -> Void
 
+    private let bundle = Bundle(for: ExampleWebhookService.self)
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Text(webhook.name.isEmpty && webhook.url.isEmpty ? "Add Webhook" : "Edit Webhook")
+                Text(webhook.name.isEmpty && webhook.url.isEmpty
+                     ? String(localized: "Add Webhook", bundle: bundle)
+                     : String(localized: "Edit Webhook", bundle: bundle))
                     .font(.headline)
                 Spacer()
             }
@@ -400,19 +410,19 @@ private struct ExampleWebhookEditView: View {
             Divider()
 
             Form {
-                Section("General") {
-                    TextField("Name", text: $webhook.name)
-                    TextField("URL", text: $webhook.url)
+                Section(String(localized: "General", bundle: bundle)) {
+                    TextField(String(localized: "Name", bundle: bundle), text: $webhook.name)
+                    TextField(String(localized: "URL", bundle: bundle), text: $webhook.url)
                         .textContentType(.URL)
-                    Picker("Method", selection: $webhook.httpMethod) {
-                        Text("POST").tag("POST")
-                        Text("PUT").tag("PUT")
+                    Picker(String(localized: "Method", bundle: bundle), selection: $webhook.httpMethod) {
+                        Text("POST", bundle: bundle).tag("POST")
+                        Text("PUT", bundle: bundle).tag("PUT")
                     }
                 }
 
-                Section("Profiles") {
+                Section(String(localized: "Profiles", bundle: bundle)) {
                     if availableProfiles.isEmpty {
-                        Text("No profiles configured.")
+                        Text("No profiles configured.", bundle: bundle)
                             .foregroundStyle(.secondary)
                             .font(.caption)
                     } else {
@@ -431,8 +441,8 @@ private struct ExampleWebhookEditView: View {
                     }
 
                     Text(webhook.profileFilter.isEmpty
-                         ? "Active for all transcriptions."
-                         : "Only active for selected profiles.")
+                         ? String(localized: "Active for all transcriptions.", bundle: bundle)
+                         : String(localized: "Only active for selected profiles.", bundle: bundle))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -443,10 +453,10 @@ private struct ExampleWebhookEditView: View {
 
             // Footer
             HStack {
-                Button("Cancel", action: onCancel)
+                Button(String(localized: "Cancel", bundle: bundle), action: onCancel)
                     .keyboardShortcut(.cancelAction)
                 Spacer()
-                Button("Save") {
+                Button(String(localized: "Save", bundle: bundle)) {
                     onSave(webhook)
                 }
                 .keyboardShortcut(.defaultAction)

@@ -166,12 +166,13 @@ private struct GroqSettingsView: View {
     @State private var validationResult: Bool?
     @State private var showApiKey = false
     @State private var selectedModel: String = ""
+    private let bundle = Bundle(for: GroqPlugin.self)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             // API Key Section
             VStack(alignment: .leading, spacing: 8) {
-                Text("API Key")
+                Text("API Key", bundle: bundle)
                     .font(.headline)
 
                 HStack(spacing: 8) {
@@ -192,7 +193,7 @@ private struct GroqSettingsView: View {
                     .buttonStyle(.borderless)
 
                     if plugin.isConfigured {
-                        Button("Remove") {
+                        Button(String(localized: "Remove", bundle: bundle)) {
                             apiKeyInput = ""
                             validationResult = nil
                             plugin.removeApiKey()
@@ -201,7 +202,7 @@ private struct GroqSettingsView: View {
                         .controlSize(.small)
                         .foregroundStyle(.red)
                     } else {
-                        Button("Save") {
+                        Button(String(localized: "Save", bundle: bundle)) {
                             saveApiKey()
                         }
                         .buttonStyle(.borderedProminent)
@@ -213,7 +214,7 @@ private struct GroqSettingsView: View {
                 if isValidating {
                     HStack(spacing: 4) {
                         ProgressView().controlSize(.small)
-                        Text("Validating...")
+                        Text("Validating...", bundle: bundle)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -221,7 +222,7 @@ private struct GroqSettingsView: View {
                     HStack(spacing: 4) {
                         Image(systemName: result ? "checkmark.circle.fill" : "xmark.circle.fill")
                             .foregroundStyle(result ? .green : .red)
-                        Text(result ? "Valid API Key" : "Invalid API Key")
+                        Text(result ? String(localized: "Valid API Key", bundle: bundle) : String(localized: "Invalid API Key", bundle: bundle))
                             .font(.caption)
                             .foregroundStyle(result ? .green : .red)
                     }
@@ -233,7 +234,7 @@ private struct GroqSettingsView: View {
 
                 // Model Selection
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Model")
+                    Text("Model", bundle: bundle)
                         .font(.headline)
 
                     Picker("Model", selection: $selectedModel) {
@@ -248,7 +249,7 @@ private struct GroqSettingsView: View {
                 }
             }
 
-            Text("API keys are stored securely in the Keychain")
+            Text("API keys are stored securely in the Keychain", bundle: bundle)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

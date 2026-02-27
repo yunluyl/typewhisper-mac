@@ -386,22 +386,23 @@ enum WhisperModelState: Equatable {
 
 private struct WhisperKitSettingsView: View {
     let plugin: WhisperKitPlugin
+    private let bundle = Bundle(for: WhisperKitPlugin.self)
     @State private var modelState: WhisperModelState = .notLoaded
     @State private var downloadProgress: Double = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("WhisperKit")
+            Text("WhisperKit", bundle: bundle)
                 .font(.headline)
 
-            Text("Local speech-to-text using OpenAI Whisper via CoreML. 99+ languages, streaming, translation to English.")
+            Text("Local speech-to-text using OpenAI Whisper via CoreML. 99+ languages, streaming, translation to English.", bundle: bundle)
                 .font(.callout)
                 .foregroundStyle(.secondary)
 
             Divider()
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Models")
+                Text("Models", bundle: bundle)
                     .font(.subheadline)
                     .fontWeight(.medium)
 
@@ -436,7 +437,7 @@ private struct WhisperKitSettingsView: View {
                     Text(modelDef.displayName)
                         .font(.body)
                     if modelDef.isRecommended {
-                        Text("Recommended")
+                        Text("Recommended", bundle: bundle)
                             .font(.caption2.weight(.semibold))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -462,7 +463,7 @@ private struct WhisperKitSettingsView: View {
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
-                Button("Unload") {
+                Button(String(localized: "Unload", bundle: bundle)) {
                     plugin.unloadModel()
                     plugin.deleteModelFiles(modelDef)
                     modelState = plugin.modelState
@@ -486,7 +487,7 @@ private struct WhisperKitSettingsView: View {
                     .font(.caption)
             }
         } else {
-            Button("Download & Load") {
+            Button(String(localized: "Download & Load", bundle: bundle)) {
                 Task {
                     await plugin.loadModel(modelDef)
                     modelState = plugin.modelState
@@ -501,11 +502,11 @@ private struct WhisperKitSettingsView: View {
     private func phaseText(_ phase: String) -> String {
         switch phase {
         case "prewarming":
-            String(localized: "Optimizing for Neural Engine...")
+            String(localized: "Optimizing for Neural Engine...", bundle: bundle)
         case "loading":
-            String(localized: "Loading model...")
+            String(localized: "Loading model...", bundle: bundle)
         default:
-            String(localized: "Loading...")
+            String(localized: "Loading...", bundle: bundle)
         }
     }
 }

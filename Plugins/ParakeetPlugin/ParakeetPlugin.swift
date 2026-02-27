@@ -160,6 +160,7 @@ enum ParakeetModelState: Equatable {
 
 private struct ParakeetSettingsView: View {
     let plugin: ParakeetPlugin
+    private let bundle = Bundle(for: ParakeetPlugin.self)
     @State private var modelState: ParakeetModelState = .notLoaded
     @State private var downloadProgress: Double = 0
 
@@ -168,7 +169,7 @@ private struct ParakeetSettingsView: View {
             Text("Parakeet")
                 .font(.headline)
 
-            Text("NVIDIA Parakeet TDT - extremely fast on Apple Silicon. 25 European languages, no API key required.")
+            Text("NVIDIA Parakeet TDT - extremely fast on Apple Silicon. 25 European languages, no API key required.", bundle: bundle)
                 .font(.callout)
                 .foregroundStyle(.secondary)
 
@@ -187,7 +188,7 @@ private struct ParakeetSettingsView: View {
 
                 switch modelState {
                 case .notLoaded:
-                    Button("Download & Load") {
+                    Button(String(localized: "Download & Load", bundle: bundle)) {
                         Task {
                             await plugin.loadModel()
                             modelState = plugin.modelState
@@ -209,7 +210,7 @@ private struct ParakeetSettingsView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundStyle(.green)
-                        Button("Unload") {
+                        Button(String(localized: "Unload", bundle: bundle)) {
                             plugin.unloadModel()
                             modelState = plugin.modelState
                         }
@@ -227,7 +228,7 @@ private struct ParakeetSettingsView: View {
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
                         }
-                        Button("Retry") {
+                        Button(String(localized: "Retry", bundle: bundle)) {
                             Task {
                                 await plugin.loadModel()
                                 modelState = plugin.modelState

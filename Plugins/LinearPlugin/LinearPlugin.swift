@@ -339,12 +339,13 @@ private struct LinearSettingsView: View {
     @State private var selectedLabelIds: Set<String> = []
     @State private var isLoadingTeams = false
     @State private var isLoadingDetails = false
+    private let bundle = Bundle(for: LinearPlugin.self)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             // API Key Section
             VStack(alignment: .leading, spacing: 8) {
-                Text("API Key")
+                Text("API Key", bundle: bundle)
                     .font(.headline)
 
                 HStack(spacing: 8) {
@@ -365,7 +366,7 @@ private struct LinearSettingsView: View {
                     .buttonStyle(.borderless)
 
                     if plugin.isConfigured {
-                        Button("Remove") {
+                        Button(String(localized: "Remove", bundle: bundle)) {
                             apiKeyInput = ""
                             validationResult = nil
                             teams = []
@@ -377,7 +378,7 @@ private struct LinearSettingsView: View {
                         .controlSize(.small)
                         .foregroundStyle(.red)
                     } else {
-                        Button("Save") {
+                        Button(String(localized: "Save", bundle: bundle)) {
                             saveApiKey()
                         }
                         .buttonStyle(.borderedProminent)
@@ -389,7 +390,7 @@ private struct LinearSettingsView: View {
                 if isValidating {
                     HStack(spacing: 4) {
                         ProgressView().controlSize(.small)
-                        Text("Validating...")
+                        Text("Validating...", bundle: bundle)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -397,13 +398,13 @@ private struct LinearSettingsView: View {
                     HStack(spacing: 4) {
                         Image(systemName: result ? "checkmark.circle.fill" : "xmark.circle.fill")
                             .foregroundStyle(result ? .green : .red)
-                        Text(result ? "Valid API Key" : "Invalid API Key")
+                        Text(result ? String(localized: "Valid API Key", bundle: bundle) : String(localized: "Invalid API Key", bundle: bundle))
                             .font(.caption)
                             .foregroundStyle(result ? .green : .red)
                     }
                 }
 
-                Text("Create a personal API key at linear.app/settings/api")
+                Text("Create a personal API key at linear.app/settings/api", bundle: bundle)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -413,19 +414,19 @@ private struct LinearSettingsView: View {
 
                 // Team & Project Selection
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Defaults")
+                    Text("Defaults", bundle: bundle)
                         .font(.headline)
 
                     if isLoadingTeams {
                         HStack(spacing: 4) {
                             ProgressView().controlSize(.small)
-                            Text("Loading teams...")
+                            Text("Loading teams...", bundle: bundle)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     } else if !teams.isEmpty {
-                        Picker("Team", selection: $selectedTeamId) {
-                            Text("Select team...").tag("")
+                        Picker(String(localized: "Team", bundle: bundle), selection: $selectedTeamId) {
+                            Text("Select team...", bundle: bundle).tag("")
                             ForEach(teams) { team in
                                 Text("\(team.key) - \(team.name)").tag(team.id)
                             }
@@ -439,15 +440,15 @@ private struct LinearSettingsView: View {
                         if isLoadingDetails {
                             HStack(spacing: 4) {
                                 ProgressView().controlSize(.small)
-                                Text("Loading projects & labels...")
+                                Text("Loading projects & labels...", bundle: bundle)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                         }
 
                         if !projects.isEmpty {
-                            Picker("Project", selection: $selectedProjectId) {
-                                Text("None").tag("")
+                            Picker(String(localized: "Project", bundle: bundle), selection: $selectedProjectId) {
+                                Text("None", bundle: bundle).tag("")
                                 ForEach(projects) { project in
                                     Text(project.name).tag(project.id)
                                 }
@@ -459,7 +460,7 @@ private struct LinearSettingsView: View {
 
                         if !labels.isEmpty {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Labels")
+                                Text("Labels", bundle: bundle)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
 
@@ -506,10 +507,10 @@ private struct LinearSettingsView: View {
 
                 // Recommended prompt
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Recommended Prompt")
+                    Text("Recommended Prompt", bundle: bundle)
                         .font(.headline)
 
-                    Text("Create a new PromptAction with this system prompt and set \"Create Linear Issue\" as the action target:")
+                    Text("Create a new PromptAction with this system prompt and set \"Create Linear Issue\" as the action target:", bundle: bundle)
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
@@ -523,7 +524,7 @@ private struct LinearSettingsView: View {
                         .background(Color(NSColor.controlBackgroundColor))
                         .cornerRadius(6)
 
-                    Button("Copy Prompt") {
+                    Button(String(localized: "Copy Prompt", bundle: bundle)) {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(prompt, forType: .string)
                     }
@@ -532,7 +533,7 @@ private struct LinearSettingsView: View {
                 }
             }
 
-            Text("API keys are stored securely in the Keychain")
+            Text("API keys are stored securely in the Keychain", bundle: bundle)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
