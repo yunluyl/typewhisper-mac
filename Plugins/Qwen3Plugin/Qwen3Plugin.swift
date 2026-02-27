@@ -133,6 +133,7 @@ final class Qwen3Plugin: NSObject, TranscriptionEnginePlugin, @unchecked Sendabl
             host?.setUserDefault(modelDef.id, forKey: "selectedModel")
             host?.setUserDefault(modelDef.id, forKey: "loadedModel")
             modelState = .ready(modelDef.id)
+            host?.notifyCapabilitiesChanged()
         } catch {
             modelState = .error(error.localizedDescription)
             throw error
@@ -144,6 +145,7 @@ final class Qwen3Plugin: NSObject, TranscriptionEnginePlugin, @unchecked Sendabl
         loadedModelId = nil
         modelState = .notLoaded
         host?.setUserDefault(nil, forKey: "loadedModel")
+        host?.notifyCapabilitiesChanged()
     }
 
     fileprivate func deleteModelFiles(_ modelDef: Qwen3ModelDef) {

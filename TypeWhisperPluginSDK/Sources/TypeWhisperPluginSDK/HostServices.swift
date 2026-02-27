@@ -23,6 +23,9 @@ public protocol HostServices: Sendable {
 
     // Available profile names
     var availableProfileNames: [String] { get }
+
+    // Notify host that plugin capabilities changed (e.g. model loaded/unloaded)
+    func notifyCapabilitiesChanged()
 }
 
 // MARK: - WAV Encoder Utility

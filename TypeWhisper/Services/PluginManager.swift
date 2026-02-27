@@ -192,6 +192,11 @@ final class PluginManager: ObservableObject {
         NSWorkspace.shared.open(pluginsDirectory)
     }
 
+    /// Notify observers that plugin state changed (e.g. a model was loaded/unloaded)
+    func notifyPluginStateChanged() {
+        objectWillChange.send()
+    }
+
     // MARK: - Dynamic Plugin Management
 
     func unloadPlugin(_ pluginId: String) {

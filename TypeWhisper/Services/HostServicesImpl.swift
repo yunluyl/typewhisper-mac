@@ -58,4 +58,12 @@ final class HostServicesImpl: HostServices, @unchecked Sendable {
     var availableProfileNames: [String] {
         profileNamesProvider()
     }
+
+    // MARK: - Capabilities
+
+    func notifyCapabilitiesChanged() {
+        DispatchQueue.main.async {
+            PluginManager.shared?.notifyPluginStateChanged()
+        }
+    }
 }
