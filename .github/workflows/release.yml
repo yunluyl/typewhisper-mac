@@ -4,7 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-      - '!plugin-*'
 
 env:
   SCHEME: TypeWhisper
@@ -16,6 +15,7 @@ permissions:
 
 jobs:
   build:
+    if: "!startsWith(github.ref_name, 'plugin-')"
     runs-on: macos-15
     steps:
       - name: Checkout
