@@ -183,6 +183,14 @@ final class PluginManager: ObservableObject {
         if enabled {
             activatePlugin(loadedPlugins[index])
         } else {
+            // If the deactivated plugin's model was selected, fall back to first ready model
+            if let engine = loadedPlugins[index].instance as? TranscriptionEnginePlugin {
+                let selectedId = UserDefaults.standard.string(forKey: UserDefaultsKeys.selectedModelId)
+                if let selectedId, selectedId.hasPrefix("\(engine.providerId):") {
+                    let fallbackId = ModelManagerViewModel.shared.readyModels.first?.id
+                    ModelManagerViewModel.shared.selectDefaultModel(fallbackId ?? "")
+                }
+            }
             loadedPlugins[index].instance.deactivate()
             logger.info("Deactivated plugin: \(pluginId)")
         }

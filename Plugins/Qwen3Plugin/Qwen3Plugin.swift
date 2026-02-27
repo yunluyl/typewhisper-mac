@@ -44,6 +44,8 @@ final class Qwen3Plugin: NSObject, TranscriptionEnginePlugin, @unchecked Sendabl
         self.host = host
         _selectedModelId = host.userDefault(forKey: "selectedModel") as? String
             ?? Self.availableModels.first?.id
+
+        Task { await restoreLoadedModel() }
     }
 
     func deactivate() {

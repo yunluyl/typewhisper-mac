@@ -54,6 +54,17 @@ final class ModelManagerViewModel: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+
+    }
+
+    /// Call after PluginManager.shared is set to forward plugin state changes to the UI
+    func observePluginManager() {
+        PluginManager.shared.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
     }
 
     func selectEngine(_ engine: EngineType) {
