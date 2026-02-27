@@ -12,6 +12,18 @@
       "size": 28775965,
       "downloadURL": "https://github.com/TypeWhisper/typewhisper-mac/releases/download/plugin-qwen3-v1.0.1/Qwen3Plugin.zip",
       "iconSystemName": "cpu"
+    },
+    {
+      "id": "com.typewhisper.linear",
+      "name": "Linear",
+      "version": "1.0.0",
+      "minHostVersion": "0.9.0",
+      "author": "TypeWhisper",
+      "description": "Create Linear issues from transcribed or processed text. Requires a Linear API key.",
+      "category": "action",
+      "size": 0,
+      "downloadURL": "",
+      "iconSystemName": "list.bullet.rectangle"
     }
   ]
 }
