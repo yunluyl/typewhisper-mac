@@ -285,9 +285,9 @@ struct RecordingSettingsView: View {
 
             Section(String(localized: "Notch Indicator")) {
                 Picker(String(localized: "Visibility"), selection: $dictation.notchIndicatorVisibility) {
-                    Text(String(localized: "Always visible")).tag(DictationViewModel.NotchIndicatorVisibility.always)
-                    Text(String(localized: "Only during activity")).tag(DictationViewModel.NotchIndicatorVisibility.duringActivity)
-                    Text(String(localized: "Never")).tag(DictationViewModel.NotchIndicatorVisibility.never)
+                    Text(String(localized: "Always visible")).tag(NotchIndicatorVisibility.always)
+                    Text(String(localized: "Only during activity")).tag(NotchIndicatorVisibility.duringActivity)
+                    Text(String(localized: "Never")).tag(NotchIndicatorVisibility.never)
                 }
 
                 Picker(String(localized: "Left Side"), selection: $dictation.notchIndicatorLeftContent) {
@@ -359,11 +359,11 @@ struct RecordingSettingsView: View {
 
     @ViewBuilder
     private var notchContentPickerOptions: some View {
-        Text(String(localized: "Recording Indicator")).tag(DictationViewModel.NotchIndicatorContent.indicator)
-        Text(String(localized: "Timer")).tag(DictationViewModel.NotchIndicatorContent.timer)
-        Text(String(localized: "Waveform")).tag(DictationViewModel.NotchIndicatorContent.waveform)
-        Text(String(localized: "Profile")).tag(DictationViewModel.NotchIndicatorContent.profile)
-        Text(String(localized: "None")).tag(DictationViewModel.NotchIndicatorContent.none)
+        Text(String(localized: "Recording Indicator")).tag(NotchIndicatorContent.indicator)
+        Text(String(localized: "Timer")).tag(NotchIndicatorContent.timer)
+        Text(String(localized: "Waveform")).tag(NotchIndicatorContent.waveform)
+        Text(String(localized: "Profile")).tag(NotchIndicatorContent.profile)
+        Text(String(localized: "None")).tag(NotchIndicatorContent.none)
     }
 }
 

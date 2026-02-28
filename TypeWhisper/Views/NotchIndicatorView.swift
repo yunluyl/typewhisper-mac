@@ -208,7 +208,7 @@ struct NotchIndicatorView: View {
     }
 
     @ViewBuilder
-    private func recordingContent(for content: DictationViewModel.NotchIndicatorContent) -> some View {
+    private func recordingContent(for content: NotchIndicatorContent) -> some View {
         switch content {
         case .indicator:
             Circle()

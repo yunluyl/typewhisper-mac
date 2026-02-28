@@ -53,24 +53,6 @@ final class DictationViewModel: ObservableObject {
     @Published var actionFeedbackIcon: String?
     @Published var activeAppIcon: NSImage?
     private var actionDisplayDuration: TimeInterval = 3.5
-    enum OverlayPosition: String, CaseIterable {
-        case top
-        case bottom
-    }
-
-    enum NotchIndicatorVisibility: String, CaseIterable {
-        case always
-        case duringActivity
-        case never
-    }
-
-    enum NotchIndicatorContent: String, CaseIterable {
-        case indicator
-        case timer
-        case waveform
-        case profile
-        case none
-    }
 
     @Published var overlayPosition: OverlayPosition {
         didSet { UserDefaults.standard.set(overlayPosition.rawValue, forKey: UserDefaultsKeys.overlayPosition) }
@@ -111,7 +93,9 @@ final class DictationViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var recordingTimer: Timer?
     private var recordingStartTime: Date?
-    private var streamingTask: Task<Void, Never>?
+    private let streamingHandler: StreamingHandler
+    private let promptPaletteHandler: PromptPaletteHandler
+    private let settingsHandler: DictationSettingsHandler
     private var transcriptionTask: Task<Void, Never>?
     private var errorResetTask: Task<Void, Never>?
     private var insertingResetTask: Task<Void, Never>?
@@ -153,6 +137,23 @@ final class DictationViewModel: ObservableObject {
             snippetService: snippetService,
             dictionaryService: dictionaryService
         )
+        self.streamingHandler = StreamingHandler(
+            modelManager: modelManager,
+            audioRecordingService: audioRecordingService,
+            dictionaryService: dictionaryService
+        )
+        self.promptPaletteHandler = PromptPaletteHandler(
+            textInsertionService: textInsertionService,
+            promptActionService: promptActionService,
+            promptProcessingService: promptProcessingService,
+            soundService: soundService
+        )
+        self.settingsHandler = DictationSettingsHandler(
+            hotkeyService: hotkeyService,
+            audioRecordingService: audioRecordingService,
+            textInsertionService: textInsertionService,
+            profileService: profileService
+        )
         self.audioDuckingEnabled = UserDefaults.standard.bool(forKey: UserDefaultsKeys.audioDuckingEnabled)
         self.audioDuckingLevel = UserDefaults.standard.object(forKey: UserDefaultsKeys.audioDuckingLevel) as? Double ?? 0.2
         self.soundFeedbackEnabled = UserDefaults.standard.object(forKey: UserDefaultsKeys.soundFeedbackEnabled) as? Bool ?? true
@@ -166,6 +167,36 @@ final class DictationViewModel: ObservableObject {
             .flatMap { NotchIndicatorContent(rawValue: $0) } ?? .waveform
 
         setupBindings()
+
+        streamingHandler.onPartialTextUpdate = { [weak self] text in
+            guard let self else { return }
+            if self.partialText != text {
+                self.partialText = text
+            }
+        }
+        streamingHandler.onStreamingStateChange = { [weak self] streaming in
+            self?.isStreaming = streaming
+        }
+
+        promptPaletteHandler.onShowNotchFeedback = { [weak self] message, icon, duration, isError in
+            self?.showNotchFeedback(message: message, icon: icon, duration: duration, isError: isError)
+        }
+        promptPaletteHandler.onShowError = { [weak self] message in
+            self?.showError(message)
+        }
+        promptPaletteHandler.executeActionPlugin = { [weak self] plugin, pluginId, text, activeApp, originalText, language in
+            try await self?.executeActionPlugin(plugin, pluginId: pluginId, text: text, activeApp: activeApp, language: language, originalText: originalText)
+        }
+        promptPaletteHandler.getActionFeedback = { [weak self] in
+            (self?.actionFeedbackMessage, self?.actionFeedbackIcon, self?.actionDisplayDuration ?? 3.5)
+        }
+
+        settingsHandler.onObjectWillChange = { [weak self] in
+            self?.objectWillChange.send()
+        }
+        settingsHandler.onHotkeyLabelsChanged = { [weak self] in
+            self?.hotkeyLabelsVersion += 1
+        }
     }
 
     var canDictate: Bool {
@@ -213,7 +244,7 @@ final class DictationViewModel: ObservableObject {
             .dropFirst()
             .sink { [weak self] profiles in
                 guard let self else { return }
-                self.syncProfileHotkeys(profiles)
+                self.settingsHandler.syncProfileHotkeys(profiles)
             }
             .store(in: &cancellables)
 
@@ -247,7 +278,7 @@ final class DictationViewModel: ObservableObject {
 
     private func startRecording(forcedProfileId: UUID? = nil) {
         // Dismiss prompt palette if active
-        promptPaletteController.hide()
+        promptPaletteHandler.hide()
 
         guard canDictate else {
             showError("No model loaded. Please download a model first.")
@@ -332,7 +363,14 @@ final class DictationViewModel: ObservableObject {
             partialText = ""
             recordingStartTime = Date()
             startRecordingTimer()
-            startStreamingIfSupported()
+            streamingHandler.start(
+                engineOverrideId: effectiveEngineOverrideId,
+                selectedProviderId: modelManager.selectedProviderId,
+                language: effectiveLanguage,
+                task: effectiveTask,
+                cloudModelOverride: effectiveCloudModelOverride,
+                stateCheck: { [weak self] in self?.state ?? .idle }
+            )
             EventBus.shared.emit(.recordingStarted(RecordingStartedPayload(
                 appName: capturedActiveApp?.name,
                 bundleIdentifier: capturedActiveApp?.bundleId
@@ -389,7 +427,7 @@ final class DictationViewModel: ObservableObject {
         guard state == .recording else { return }
 
         audioDuckingService.restoreAudio()
-        stopStreaming()
+        streamingHandler.stop()
         stopRecordingTimer()
         var samples = audioRecordingService.stopRecording()
 
@@ -553,75 +591,19 @@ final class DictationViewModel: ObservableObject {
         }
     }
 
-    func requestMicPermission() {
-        Task {
-            _ = await audioRecordingService.requestMicrophonePermission()
-            DispatchQueue.main.async { [weak self] in
-                self?.objectWillChange.send()
-            }
-            pollPermissionStatus()
-        }
-    }
-
-    func requestAccessibilityPermission() {
-        textInsertionService.requestAccessibilityPermission()
-        pollPermissionStatus()
-    }
-
-    func setHotkey(_ hotkey: UnifiedHotkey, for slot: HotkeySlotType) {
-        hotkeyService.updateHotkey(hotkey, for: slot)
-        hotkeyLabelsVersion += 1
-    }
-
-    func clearHotkey(for slot: HotkeySlotType) {
-        hotkeyService.clearHotkey(for: slot)
-        hotkeyLabelsVersion += 1
-    }
-
-    func isHotkeyAssigned(_ hotkey: UnifiedHotkey, excluding: HotkeySlotType) -> HotkeySlotType? {
-        hotkeyService.isHotkeyAssigned(hotkey, excluding: excluding)
-    }
+    func requestMicPermission() { settingsHandler.requestMicPermission() }
+    func requestAccessibilityPermission() { settingsHandler.requestAccessibilityPermission() }
+    func setHotkey(_ hotkey: UnifiedHotkey, for slot: HotkeySlotType) { settingsHandler.setHotkey(hotkey, for: slot) }
+    func clearHotkey(for slot: HotkeySlotType) { settingsHandler.clearHotkey(for: slot) }
+    func isHotkeyAssigned(_ hotkey: UnifiedHotkey, excluding: HotkeySlotType) -> HotkeySlotType? { settingsHandler.isHotkeyAssigned(hotkey, excluding: excluding) }
 
     private static func loadHotkeyLabel(for slotType: HotkeySlotType) -> String {
-        if let data = UserDefaults.standard.data(forKey: slotType.defaultsKey),
-           let hotkey = try? JSONDecoder().decode(UnifiedHotkey.self, from: data) {
-            return HotkeyService.displayName(for: hotkey)
-        }
-        return ""
-    }
-
-    private var permissionPollTask: Task<Void, Never>?
-
-    /// Polls permission status periodically until granted or timeout.
-    private func pollPermissionStatus() {
-        permissionPollTask?.cancel()
-        permissionPollTask = Task {
-            for _ in 0..<30 {
-                try? await Task.sleep(for: .seconds(1))
-                guard !Task.isCancelled else { return }
-                DispatchQueue.main.async { [weak self] in
-                    self?.objectWillChange.send()
-                }
-                if !needsMicPermission, !needsAccessibilityPermission { return }
-            }
-        }
+        DictationSettingsHandler.loadHotkeyLabel(for: slotType)
     }
 
     /// Register profile hotkeys after app is fully initialized.
     /// Called from ServiceContainer.initialize() to avoid early monitor setup.
-    func registerInitialProfileHotkeys() {
-        syncProfileHotkeys(profileService.profiles)
-    }
-
-    private func syncProfileHotkeys(_ profiles: [Profile]) {
-        let entries = profiles
-            .filter { $0.isEnabled }
-            .compactMap { profile -> (id: UUID, hotkey: UnifiedHotkey)? in
-                guard let hotkey = profile.hotkey else { return nil }
-                return (id: profile.id, hotkey: hotkey)
-            }
-        hotkeyService.registerProfileHotkeys(entries)
-    }
+    func registerInitialProfileHotkeys() { settingsHandler.registerInitialProfileHotkeys() }
 
     private func resetDictationState() {
         errorResetTask?.cancel()
@@ -732,152 +714,8 @@ final class DictationViewModel: ObservableObject {
 
     // MARK: - Standalone Prompt Palette
 
-    private let promptPaletteController = PromptPaletteController()
-
-    private struct PaletteContext {
-        let text: String
-        let selection: TextInsertionService.TextSelection?
-        let focusedElement: AXUIElement?
-        let activeApp: (name: String?, bundleId: String?, url: String?)
-        let browserInfoTask: Task<(url: String?, title: String?), Never>?
-    }
-    private var paletteContext: PaletteContext?
-
     func triggerStandalonePromptSelection() {
-        // Toggle behavior
-        if promptPaletteController.isVisible {
-            promptPaletteController.hide()
-            return
-        }
-        guard state == .idle else { return }
-
-        guard promptProcessingService.isCurrentProviderReady else {
-            soundService.play(.error, enabled: soundFeedbackEnabled)
-            showError(String(localized: "noLLMProvider"))
-            return
-        }
-
-        let actions = promptActionService.getEnabledActions()
-        guard !actions.isEmpty else { return }
-
-        // Capture active app BEFORE the palette steals focus
-        let activeApp = textInsertionService.captureActiveApp()
-
-        // Start resolving browser URL + title asynchronously
-        var browserInfoTask: Task<(url: String?, title: String?), Never>?
-        if let bundleId = activeApp.bundleId {
-            let tis = textInsertionService
-            browserInfoTask = Task {
-                await tis.resolveBrowserInfo(bundleId: bundleId)
-            }
-        }
-
-        // Try to get selected text (with element reference), fall back to clipboard
-        let text: String
-        var selection: TextInsertionService.TextSelection?
-        var focusedElement: AXUIElement?
-        if let sel = textInsertionService.getTextSelection() {
-            text = sel.text
-            selection = sel
-            logger.info("[PromptPalette] Got selected text: \(text.prefix(80))")
-        } else if let clipboard = NSPasteboard.general.string(forType: .string), !clipboard.isEmpty {
-            text = clipboard
-            focusedElement = textInsertionService.getFocusedTextElement()
-            logger.info("[PromptPalette] No selection, using clipboard: \(text.prefix(80))")
-        } else {
-            logger.info("[PromptPalette] No text available, aborting")
-            return
-        }
-
-        paletteContext = PaletteContext(
-            text: text,
-            selection: selection,
-            focusedElement: focusedElement,
-            activeApp: activeApp,
-            browserInfoTask: browserInfoTask
-        )
-
-        promptPaletteController.show(actions: actions, sourceText: text) { [weak self] action in
-            self?.processStandalonePrompt(action: action)
-        }
-    }
-
-    private func processStandalonePrompt(action: PromptAction) {
-        guard let ctx = paletteContext else { return }
-        paletteContext = nil
-
-        showNotchFeedback(message: action.name + "...", icon: "ellipsis.circle", duration: 30)
-
-        Task {
-            do {
-                let result = try await promptProcessingService.process(
-                    prompt: action.prompt,
-                    text: ctx.text,
-                    providerOverride: action.providerType,
-                    cloudModelOverride: action.cloudModel
-                )
-                guard !Task.isCancelled else { return }
-
-                // Route to action plugin if configured
-                if let actionPluginId = action.targetActionPluginId,
-                   let actionPlugin = PluginManager.shared.actionPlugin(for: actionPluginId) {
-                    let browserInfo = await ctx.browserInfoTask?.value
-                    let resolvedUrl = browserInfo?.url ?? ctx.activeApp.url
-                    let resolvedApp = (name: browserInfo?.title ?? ctx.activeApp.name,
-                                       bundleId: ctx.activeApp.bundleId, url: resolvedUrl)
-                    try await executeActionPlugin(
-                        actionPlugin, pluginId: actionPluginId, text: result,
-                        activeApp: resolvedApp, originalText: ctx.text
-                    )
-                    soundService.play(.transcriptionSuccess, enabled: soundFeedbackEnabled)
-                    showNotchFeedback(
-                        message: actionFeedbackMessage ?? "Done",
-                        icon: actionFeedbackIcon ?? "checkmark.circle.fill",
-                        duration: actionDisplayDuration
-                    )
-                    return
-                }
-
-                if let selection = ctx.selection {
-                    logger.info("[PromptPalette] Replacing selection with result (\(result.count) chars): \(result.prefix(80))")
-                    let replaced = textInsertionService.replaceSelectedText(in: selection, with: result)
-                    logger.info("[PromptPalette] replaceSelectedText succeeded: \(replaced)")
-                    if !replaced {
-                        logger.info("[PromptPalette] Falling back to clipboard")
-                        let pasteboard = NSPasteboard.general
-                        pasteboard.clearContents()
-                        pasteboard.setString(result, forType: .string)
-                    }
-                    soundService.play(.transcriptionSuccess, enabled: soundFeedbackEnabled)
-                    showNotchFeedback(
-                        message: replaced ? String(localized: "Text replaced") : String(localized: "Copied to clipboard"),
-                        icon: replaced ? "checkmark.circle.fill" : "doc.on.clipboard.fill"
-                    )
-                } else if let element = ctx.focusedElement {
-                    let inserted = textInsertionService.insertTextAt(element: element, text: result)
-                    if inserted {
-                        soundService.play(.transcriptionSuccess, enabled: soundFeedbackEnabled)
-                        showNotchFeedback(message: String(localized: "Text inserted"), icon: "checkmark.circle.fill")
-                    } else {
-                        let pasteboard = NSPasteboard.general
-                        pasteboard.clearContents()
-                        pasteboard.setString(result, forType: .string)
-                        soundService.play(.transcriptionSuccess, enabled: soundFeedbackEnabled)
-                        showNotchFeedback(message: String(localized: "Copied to clipboard"), icon: "doc.on.clipboard.fill")
-                    }
-                } else {
-                    let pasteboard = NSPasteboard.general
-                    pasteboard.clearContents()
-                    pasteboard.setString(result, forType: .string)
-                    soundService.play(.transcriptionSuccess, enabled: soundFeedbackEnabled)
-                    showNotchFeedback(message: String(localized: "Copied to clipboard"), icon: "doc.on.clipboard.fill")
-                }
-            } catch {
-                guard !Task.isCancelled else { return }
-                soundService.play(.error, enabled: soundFeedbackEnabled)
-                showNotchFeedback(message: error.localizedDescription, icon: "xmark.circle.fill", isError: true)
-            }
-        }
+        promptPaletteHandler.triggerSelection(currentState: state, soundFeedbackEnabled: soundFeedbackEnabled)
     }
 
     private func showNotchFeedback(message: String, icon: String, duration: TimeInterval = 2.5, isError: Bool = false) {
@@ -902,124 +740,6 @@ final class DictationViewModel: ObservableObject {
                 state = .idle
             }
         }
-    }
-
-    // MARK: - Streaming
-
-    /// Text confirmed from previous streaming passes — never changes once set.
-    private var confirmedStreamingText = ""
-
-    private func startStreamingIfSupported() {
-        let providerId = effectiveEngineOverrideId ?? modelManager.selectedProviderId
-        guard let providerId,
-              let plugin = PluginManager.shared.transcriptionEngine(for: providerId),
-              plugin.supportsStreaming else { return }
-
-        isStreaming = true
-        confirmedStreamingText = ""
-        let streamLanguage = effectiveLanguage
-        let streamTask = effectiveTask
-        let streamEngineOverride = effectiveEngineOverrideId
-        let streamCloudModelOverride = effectiveCloudModelOverride
-        let streamPrompt = dictionaryService.getTermsForPrompt()
-        streamingTask = Task { [weak self] in
-            guard let self else { return }
-            // Initial delay before first streaming attempt
-            try? await Task.sleep(for: .seconds(1.5))
-
-            while !Task.isCancelled, self.state == .recording {
-                let buffer = self.audioRecordingService.getRecentBuffer(maxDuration: 3600)
-                let bufferDuration = Double(buffer.count) / 16000.0
-
-                if bufferDuration > 0.5 {
-                    do {
-                        let confirmed = self.confirmedStreamingText
-                        let result = try await self.modelManager.transcribe(
-                            audioSamples: buffer,
-                            language: streamLanguage,
-                            task: streamTask,
-                            engineOverrideId: streamEngineOverride,
-                            cloudModelOverride: streamCloudModelOverride,
-                            prompt: streamPrompt,
-                            onProgress: { [weak self] text in
-                                guard let self, !Task.isCancelled else { return false }
-                                let stable = Self.stabilizeText(confirmed: confirmed, new: text)
-                                DispatchQueue.main.async {
-                                    if self.partialText != stable {
-                                        self.partialText = stable
-                                    }
-                                }
-                                return true
-                            }
-                        )
-                        let text = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
-                        if !text.isEmpty {
-                            let stable = Self.stabilizeText(confirmed: confirmed, new: text)
-                            if self.partialText != stable {
-                                self.partialText = stable
-                            }
-                            self.confirmedStreamingText = stable
-                        }
-                    } catch {
-                        // Streaming errors are non-fatal; final transcription will still run
-                    }
-                }
-
-                try? await Task.sleep(for: .seconds(1.5))
-            }
-        }
-    }
-
-    private func stopStreaming() {
-        streamingTask?.cancel()
-        streamingTask = nil
-        isStreaming = false
-        confirmedStreamingText = ""
-    }
-
-    /// Keeps confirmed text stable and only appends new content.
-    nonisolated private static func stabilizeText(confirmed: String, new: String) -> String {
-        let new = new.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !confirmed.isEmpty else { return new }
-        guard !new.isEmpty else { return confirmed }
-
-        // Best case: new text starts with confirmed text
-        if new.hasPrefix(confirmed) { return new }
-
-        // Find how far the texts match from the start
-        let confirmedChars = Array(confirmed.unicodeScalars)
-        let newChars = Array(new.unicodeScalars)
-        var matchEnd = 0
-        for i in 0..<min(confirmedChars.count, newChars.count) {
-            if confirmedChars[i] == newChars[i] {
-                matchEnd = i + 1
-            } else {
-                break
-            }
-        }
-
-        // If more than half matches, keep confirmed and append the new tail
-        if matchEnd > confirmed.count / 2 {
-            let newContent = String(new.unicodeScalars.dropFirst(matchEnd))
-            return confirmed + newContent
-        }
-
-        // Suffix-prefix overlap: new text starts with a suffix of confirmed
-        // (happens when the streaming window has shifted forward)
-        let minOverlap = min(20, confirmedChars.count / 4)
-        let maxShift = min(confirmedChars.count - minOverlap, 150)
-        if maxShift > 0 {
-            for dropCount in 1...maxShift {
-                let suffix = String(confirmed.unicodeScalars.dropFirst(dropCount))
-                if new.hasPrefix(suffix) {
-                    let newTail = String(new.unicodeScalars.dropFirst(confirmed.unicodeScalars.count - dropCount))
-                    return newTail.isEmpty ? confirmed : confirmed + newTail
-                }
-            }
-        }
-
-        // Very different result — accept the new text to avoid freezing the preview
-        return new
     }
 
     private func startRecordingTimer() {

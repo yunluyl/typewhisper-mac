@@ -136,6 +136,10 @@
 		AA00000000000000000178 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = BB00000000000000000168 /* Localizable.xcstrings */; };
 		AA00000000000000000179 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = BB00000000000000000169 /* Localizable.xcstrings */; };
 		AA00000000000000000180 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = BB00000000000000000170 /* Localizable.xcstrings */; };
+		AA00000000000000000181 /* DictationEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00000000000000000171 /* DictationEnums.swift */; };
+		AA00000000000000000182 /* StreamingHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00000000000000000172 /* StreamingHandler.swift */; };
+		AA00000000000000000183 /* PromptPaletteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00000000000000000173 /* PromptPaletteHandler.swift */; };
+		AA00000000000000000184 /* DictationSettingsHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00000000000000000174 /* DictationSettingsHandler.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -267,6 +271,10 @@
 		BB00000000000000000168 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		BB00000000000000000169 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		BB00000000000000000170 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		BB00000000000000000171 /* DictationEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationEnums.swift; sourceTree = "<group>"; };
+		BB00000000000000000172 /* StreamingHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingHandler.swift; sourceTree = "<group>"; };
+		BB00000000000000000173 /* PromptPaletteHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptPaletteHandler.swift; sourceTree = "<group>"; };
+		BB00000000000000000174 /* DictationSettingsHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationSettingsHandler.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -593,6 +601,10 @@
 				BB00000000000000000084 /* SnippetsViewModel.swift */,
 				BB00000000000000000090 /* HomeViewModel.swift */,
 				BB00000000000000000116 /* PromptActionsViewModel.swift */,
+				BB00000000000000000171 /* DictationEnums.swift */,
+				BB00000000000000000172 /* StreamingHandler.swift */,
+				BB00000000000000000173 /* PromptPaletteHandler.swift */,
+				BB00000000000000000174 /* DictationSettingsHandler.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -1216,6 +1228,10 @@
 				AA00000000000000000031 /* HotkeyService.swift in Sources */,
 				AA00000000000000000032 /* TextInsertionService.swift in Sources */,
 				AA00000000000000000033 /* DictationViewModel.swift in Sources */,
+				AA00000000000000000181 /* DictationEnums.swift in Sources */,
+				AA00000000000000000182 /* StreamingHandler.swift in Sources */,
+				AA00000000000000000183 /* PromptPaletteHandler.swift in Sources */,
+				AA00000000000000000184 /* DictationSettingsHandler.swift in Sources */,
 				AA00000000000000000040 /* HTTPResponse.swift in Sources */,
 				AA00000000000000000041 /* HTTPRequestParser.swift in Sources */,
 				AA00000000000000000042 /* APIRouter.swift in Sources */,
