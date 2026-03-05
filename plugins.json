@@ -143,7 +143,7 @@
     {
       "id": "com.typewhisper.speechanalyzer",
       "name": "Apple Speech",
-      "version": "1.0.3",
+      "version": "1.0.6",
       "minHostVersion": "0.11",
       "author": "TypeWhisper",
       "description": "On-device speech recognition using Apple's Speech framework. Requires macOS 26+, streaming support.",
@@ -151,8 +151,8 @@
         "de": "Ger\u00e4tebasierte Spracherkennung mit Apples Speech-Framework. Erfordert macOS 26+, Streaming-Unterst\u00fctzung."
       },
       "category": "transcription",
-      "size": 176624,
-      "downloadURL": "https://github.com/TypeWhisper/typewhisper-mac/releases/download/plugin-speechanalyzer-v1.0.3/SpeechAnalyzerPlugin.zip",
+      "size": 176727,
+      "downloadURL": "https://github.com/TypeWhisper/typewhisper-mac/releases/download/plugin-speechanalyzer-v1.0.6/SpeechAnalyzerPlugin.zip",
       "iconSystemName": "apple.logo"
     }
   ]
