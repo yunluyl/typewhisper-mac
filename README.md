@@ -1,7 +1,7 @@
 # TypeWhisper for Mac
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![macOS](https://img.shields.io/badge/macOS-15.0%2B-black.svg)](https://www.apple.com/macos/)
+[![macOS](https://img.shields.io/badge/macOS-14.0%2B-black.svg)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-6-orange.svg)](https://swift.org)
 
 Speech-to-text and AI text processing for macOS. Transcribe audio using on-device AI models or cloud APIs (Groq, OpenAI), then process the result with custom LLM prompts. Your voice data stays on your Mac with local models - or use cloud APIs for faster processing.
@@ -39,7 +39,7 @@ Speech-to-text and AI text processing for macOS. Transcribe audio using on-devic
 
 ### Transcription
 
-- **Six engines** - WhisperKit (99+ languages, streaming, translation), Parakeet TDT v3 (25 European languages, extremely fast), Apple SpeechAnalyzer (macOS 26+, no model download needed), Qwen3 ASR (MLX-based), Groq Whisper, and OpenAI Whisper
+- **Eight engines** - WhisperKit (99+ languages, streaming, translation), Parakeet TDT v3 (25 European languages, extremely fast), Apple SpeechAnalyzer (macOS 26+, no model download needed), Qwen3 ASR (MLX-based), Voxtral (local Voxtral Mini 4B, MLX-based), Groq Whisper, OpenAI Whisper, and OpenAI Compatible (any OpenAI-compatible API)
 - **On-device or cloud** - All processing happens locally on your Mac, or use Groq/OpenAI Whisper APIs for faster processing
 - **Streaming preview** - See partial transcription in real-time while speaking (WhisperKit)
 - **File transcription** - Batch-process multiple audio/video files with drag & drop
@@ -55,7 +55,7 @@ Speech-to-text and AI text processing for macOS. Transcribe audio using on-devic
 ### AI Processing
 
 - **Custom prompts** - Process transcriptions (or any text) with LLM prompts. 8 presets included (Translate, Formal, Summarize, Fix Grammar, Email, List, Shorter, Explain). Standalone Prompt Palette via global hotkey - a floating panel for AI text processing independent of dictation
-- **LLM providers** - Apple Intelligence (macOS 26+), Groq, OpenAI, and Gemini with per-prompt provider and model override
+- **LLM providers** - Apple Intelligence (macOS 26+), Groq, OpenAI, Gemini, and OpenAI Compatible with per-prompt provider and model override
 - **Translation** - Translate transcriptions on-device using Apple Translate
 
 ### Personalization
@@ -67,7 +67,7 @@ Speech-to-text and AI text processing for macOS. Transcribe audio using on-devic
 
 ### Integration & Extensibility
 
-- **Plugin system** - Extend TypeWhisper with custom LLM providers, transcription engines, post-processors, and action plugins. Groq, OpenAI, Gemini, Linear, and Webhook ship as bundled plugins. Linear plugin enables voice-to-issue creation. See [Plugins/README.md](Plugins/README.md)
+- **Plugin system** - Extend TypeWhisper with custom LLM providers, transcription engines, post-processors, and action plugins. Groq, OpenAI, OpenAI Compatible, Gemini, Linear, Voxtral, and Webhook ship as bundled plugins. Linear plugin enables voice-to-issue creation. See [Plugins/README.md](Plugins/README.md)
 - **HTTP API** - Local REST API for integration with external tools and scripts
 - **CLI tool** - Shell-friendly transcription via the command line
 
@@ -76,6 +76,7 @@ Speech-to-text and AI text processing for macOS. Transcribe audio using on-devic
 - **Home dashboard** - Usage statistics, activity chart, and onboarding tutorial
 - **Auto-update** - Built-in updates via Sparkle
 - **Universal binary** - Runs natively on Apple Silicon and Intel Macs
+- **Widgets** - Desktop widgets for usage stats, last transcription, activity chart, and transcription history
 - **Multilingual UI** - English and German
 - **Launch at Login** - Start automatically with macOS
 
@@ -93,16 +94,17 @@ Download the latest DMG from [GitHub Releases](https://github.com/TypeWhisper/ty
 
 ## System Requirements
 
-- macOS 15.0 (Sequoia) or later
+- macOS 14.0 (Sonoma) or later
 - Apple Silicon (M1 or later) recommended
 - 8 GB RAM minimum, 16 GB+ recommended for larger models
+- Some features (Apple Translate, improved Settings UI) require macOS 15+. Apple Intelligence and SpeechAnalyzer require macOS 26+.
 
 ## Model Recommendations
 
 | RAM | Recommended Models |
 |-----|-------------------|
 | < 8 GB | Whisper Tiny, Whisper Base |
-| 8-16 GB | Whisper Small, Whisper Large v3 Turbo, Parakeet TDT v3 |
+| 8-16 GB | Whisper Small, Whisper Large v3 Turbo, Parakeet TDT v3, Voxtral Mini 4B |
 | > 16 GB | Whisper Large v3 |
 
 ## Build
@@ -283,7 +285,7 @@ Multiple engines can be loaded simultaneously for instant switching between prof
 
 TypeWhisper supports plugins for adding custom LLM providers, transcription engines, post-processors, and action plugins. Plugins are macOS `.bundle` files placed in `~/Library/Application Support/TypeWhisper/Plugins/`.
 
-The built-in cloud providers (Groq, OpenAI, Gemini, Linear, Webhook) are implemented as bundled plugins and serve as reference implementations.
+All 11 engines and integrations (WhisperKit, Parakeet, SpeechAnalyzer, Qwen3, Voxtral, Groq, OpenAI, OpenAI Compatible, Gemini, Linear, Webhook) are implemented as bundled plugins and serve as reference implementations.
 
 See [Plugins/README.md](Plugins/README.md) for the full plugin development guide, including the event bus, host services API, and manifest format.
 
@@ -293,8 +295,10 @@ See [Plugins/README.md](Plugins/README.md) for the full plugin development guide
 TypeWhisper/
 ├── typewhisper-cli/           # Command-line tool (status, models, transcribe)
 ├── Plugins/                # Bundled plugins (WhisperKit, Parakeet, SpeechAnalyzer, Qwen3,
-│                           #   Groq, OpenAI, Gemini, Linear, Webhook)
+│                           #   Voxtral, Groq, OpenAI, OpenAI Compatible, Gemini, Linear, Webhook)
 ├── TypeWhisperPluginSDK/   # Plugin SDK (Swift package)
+├── TypeWhisperWidgetExtension/ # WidgetKit widgets (stats, activity, history)
+├── TypeWhisperWidgetShared/    # Shared widget data models
 ├── App/                    # App entry point, dependency injection
 ├── Models/                 # Data models (TranscriptionResult, Profile, PromptAction, etc.)
 ├── Services/
