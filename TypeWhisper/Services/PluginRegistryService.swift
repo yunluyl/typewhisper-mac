@@ -259,6 +259,13 @@ final class PluginRegistryService: ObservableObject {
             try FileManager.default.moveItem(at: bundleURL, to: destURL)
             PluginManager.shared.loadPlugin(at: destURL)
 
+            // Verify plugin actually loaded (e.g. incompatible macOS version fails silently)
+            if !PluginManager.shared.loadedPlugins.contains(where: { $0.manifest.id == plugin.id }) {
+                installStates[plugin.id] = .error(String(localized: "Plugin incompatible with this macOS version"))
+                logger.error("Plugin \(plugin.id) downloaded but failed to load")
+                return
+            }
+
             installStates.removeValue(forKey: plugin.id)
             lastFetchDate = nil // invalidate cache so installInfo refreshes
             updateAvailableUpdatesCount()
