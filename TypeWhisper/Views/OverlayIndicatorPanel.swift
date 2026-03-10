@@ -2,12 +2,7 @@ import AppKit
 import SwiftUI
 import Combine
 
-/// Hosting view that accepts first mouse click without requiring a prior activation click.
-private class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-}
-
-/// Floating panel for the Overlay Indicator mode, anchored bottom-center.
+/// Floating panel for the Overlay Indicator mode.
 class OverlayIndicatorPanel: NSPanel {
     private static let panelWidth: CGFloat = 500
     private static let panelHeight: CGFloat = 300
@@ -34,7 +29,8 @@ class OverlayIndicatorPanel: NSPanel {
         hidesOnDeactivate = false
         ignoresMouseEvents = true
 
-        let hostingView = FirstMouseHostingView(rootView: OverlayIndicatorView())
+        let hostingView = NSHostingView(rootView: OverlayIndicatorView())
+        hostingView.sizingOptions = []
         contentView = hostingView
     }
 
@@ -63,6 +59,14 @@ class OverlayIndicatorPanel: NSPanel {
             .sink { [weak self] _ in
                 self?.cachedScreen = nil
                 self?.updateVisibility(state: vm.state, vm: vm)
+            }
+            .store(in: &cancellables)
+
+        vm.$overlayPosition
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self, self.isVisible else { return }
+                self.show()
             }
             .store(in: &cancellables)
     }
@@ -97,12 +101,17 @@ class OverlayIndicatorPanel: NSPanel {
             cachedScreen = screen
         }
 
-        let screenFrame = screen.frame
-        // Position the overlay roughly 10% from the bottom of the screen
-        let bottomOffset: CGFloat = screenFrame.height * 0.10
-
+        let screenFrame = screen.visibleFrame
         let x = screenFrame.midX - Self.panelWidth / 2
-        let y = screenFrame.origin.y + bottomOffset
+
+        let y: CGFloat
+        switch DictationViewModel.shared.overlayPosition {
+        case .bottom:
+            y = screenFrame.origin.y + 20
+        case .top:
+            // Position below menu bar area, like a taskbar
+            y = screenFrame.origin.y + screenFrame.height - Self.panelHeight - 20
+        }
 
         setFrame(NSRect(x: x, y: y, width: Self.panelWidth, height: Self.panelHeight), display: true)
         orderFrontRegardless()

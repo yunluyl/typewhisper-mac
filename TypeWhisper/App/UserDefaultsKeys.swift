@@ -45,6 +45,7 @@ enum UserDefaultsKeys {
     static let historyRetentionDays = "historyRetentionDays"
 
     // MARK: - Notch Indicator
+    static let overlayPosition = "overlayPosition"
     static let notchIndicatorVisibility = "notchIndicatorVisibility"
     static let notchIndicatorLeftContent = "notchIndicatorLeftContent"
     static let notchIndicatorRightContent = "notchIndicatorRightContent"

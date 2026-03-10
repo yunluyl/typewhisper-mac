@@ -74,6 +74,10 @@ final class DictationViewModel: ObservableObject {
         didSet { UserDefaults.standard.set(notchIndicatorDisplay.rawValue, forKey: UserDefaultsKeys.notchIndicatorDisplay) }
     }
 
+    @Published var overlayPosition: OverlayPosition {
+        didSet { UserDefaults.standard.set(overlayPosition.rawValue, forKey: UserDefaultsKeys.overlayPosition) }
+    }
+
     private let audioRecordingService: AudioRecordingService
     private let textInsertionService: TextInsertionService
     private let hotkeyService: HotkeyService
@@ -171,6 +175,8 @@ final class DictationViewModel: ObservableObject {
             .flatMap { NotchIndicatorContent(rawValue: $0) } ?? .waveform
         self.notchIndicatorDisplay = UserDefaults.standard.string(forKey: UserDefaultsKeys.notchIndicatorDisplay)
             .flatMap { NotchIndicatorDisplay(rawValue: $0) } ?? .activeScreen
+        self.overlayPosition = UserDefaults.standard.string(forKey: UserDefaultsKeys.overlayPosition)
+            .flatMap { OverlayPosition(rawValue: $0) } ?? .bottom
 
         setupBindings()
 

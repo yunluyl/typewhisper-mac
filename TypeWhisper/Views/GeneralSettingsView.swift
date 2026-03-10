@@ -105,6 +105,13 @@ struct GeneralSettingsView: View {
                     Text(String(localized: "Never")).tag(NotchIndicatorVisibility.never)
                 }
 
+                if dictation.indicatorStyle == .overlay {
+                    Picker(String(localized: "Position"), selection: $dictation.overlayPosition) {
+                        Text(String(localized: "Top")).tag(OverlayPosition.top)
+                        Text(String(localized: "Bottom")).tag(OverlayPosition.bottom)
+                    }
+                }
+
                 Picker(String(localized: "Display"), selection: $dictation.notchIndicatorDisplay) {
                     Text(String(localized: "Active Screen")).tag(NotchIndicatorDisplay.activeScreen)
                     Text(String(localized: "Primary Screen")).tag(NotchIndicatorDisplay.primaryScreen)
@@ -124,7 +131,7 @@ struct GeneralSettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
-                    Text(String(localized: "The overlay indicator appears as a floating pill near the bottom of the screen."))
+                    Text(String(localized: "The overlay indicator appears as a floating pill on the screen."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

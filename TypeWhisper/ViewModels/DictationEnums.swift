@@ -24,3 +24,8 @@ enum NotchIndicatorDisplay: String, CaseIterable {
     case primaryScreen
     case builtInScreen
 }
+
+enum OverlayPosition: String, CaseIterable {
+    case top
+    case bottom
+}

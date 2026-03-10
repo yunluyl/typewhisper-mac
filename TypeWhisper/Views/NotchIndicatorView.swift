@@ -12,8 +12,8 @@ struct NotchIndicatorView: View {
     @State private var dotPulse = false
 
     private let extensionWidth: CGFloat = 60
-    /// Consistent horizontal padding for all expanded content (lists, results, text).
     private let contentPadding: CGFloat = 28
+    private let sizing: IndicatorSizing = .notch
 
     private var closedWidth: CGFloat {
         geometry.hasNotch ? geometry.notchWidth + 2 * extensionWidth : 200
@@ -35,54 +35,33 @@ struct NotchIndicatorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Three-zone status bar - fixed width so it doesn't shift on expansion
             statusBar
                 .frame(width: closedWidth, height: geometry.notchHeight)
                 .frame(maxWidth: .infinity)
 
-            // Expandable partial text area
             if viewModel.state == .recording {
-                ScrollViewReader { proxy in
-                    ScrollView(.vertical, showsIndicators: true) {
-                        Text(viewModel.partialText)
-                            .font(.system(size: 12))
-                            .foregroundStyle(.white.opacity(0.85))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 34)
-                            .padding(.top, 14)
-                            .padding(.bottom, 16)
-                            .id("bottom")
-                    }
-                    .frame(height: textExpanded ? 80 : 0)
-                    .clipped()
-                    .onChange(of: viewModel.partialText) {
-                        if !viewModel.partialText.isEmpty, !textExpanded {
-                            withAnimation(.easeOut(duration: 0.25)) {
-                                textExpanded = true
-                            }
+                IndicatorExpandableText(
+                    text: viewModel.partialText,
+                    sizing: sizing,
+                    expanded: textExpanded,
+                    contentPadding: 34
+                )
+                .onChange(of: viewModel.partialText) {
+                    if !viewModel.partialText.isEmpty, !textExpanded {
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            textExpanded = true
                         }
-                        proxy.scrollTo("bottom", anchor: .bottom)
                     }
                 }
-                .transaction { $0.disablesAnimations = true }
             }
 
-            // Action feedback banner
             if hasActionFeedback {
-                HStack(spacing: 8) {
-                    Image(systemName: viewModel.actionFeedbackIcon ?? "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                        .font(.system(size: 16))
-                    Text(viewModel.actionFeedbackMessage ?? "")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.9))
-                        .lineLimit(1)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .padding(.horizontal, contentPadding)
+                IndicatorActionFeedback(
+                    message: viewModel.actionFeedbackMessage ?? "",
+                    icon: viewModel.actionFeedbackIcon,
+                    contentPadding: contentPadding
+                )
             }
-
         }
         .frame(width: currentWidth)
         .background(.black)
@@ -100,10 +79,8 @@ struct NotchIndicatorView: View {
                 withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
                     dotPulse = true
                 }
-
             } else {
                 dotPulse = false
-
                 textExpanded = false
             }
         }
@@ -116,13 +93,17 @@ struct NotchIndicatorView: View {
     private var statusBar: some View {
         HStack(spacing: 0) {
             HStack(spacing: 6) {
-                leftIndicator
+                IndicatorLeftStatus(
+                    viewModel: viewModel,
+                    sizing: sizing,
+                    dotPulse: dotPulse,
+                    hasActionFeedback: hasActionFeedback
+                )
                 leftContent
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             .padding(.leading, 14)
 
-            // Center: notch spacer (invisible black, matches hardware notch)
             if geometry.hasNotch {
                 Color.clear
                     .frame(width: geometry.notchWidth)
@@ -134,126 +115,33 @@ struct NotchIndicatorView: View {
         }
     }
 
-    // MARK: - Left indicator (app icon or fallback state icon)
-
-    @ViewBuilder
-    private var leftIndicator: some View {
-        switch viewModel.state {
-        case .idle, .promptSelection, .promptProcessing:
-            Color.clear.frame(width: 0, height: 0)
-        case .recording:
-            if let icon = viewModel.activeAppIcon {
-                appIconView(icon)
-            } else {
-                Circle()
-                    .fill(Color.red)
-                    .frame(width: 6, height: 6)
-                    .scaleEffect(1.0 + CGFloat(viewModel.audioLevel) * 0.8)
-                    .shadow(color: .yellow.opacity(dotPulse ? 0.8 : 0.2),
-                        radius: dotPulse ? 6 : 2)
-            }
-        case .processing:
-            if let icon = viewModel.activeAppIcon {
-                appIconView(icon)
-            } else {
-                ProgressView()
-                    .controlSize(.mini)
-                    .tint(.white)
-            }
-        case .inserting:
-            if hasActionFeedback {
-                Color.clear.frame(width: 0, height: 0)
-            } else if let icon = viewModel.activeAppIcon {
-                appIconView(icon)
-            } else {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                    .font(.system(size: 11))
-            }
-        case .error:
-            if let icon = viewModel.activeAppIcon {
-                appIconView(icon, borderColor: .red)
-            } else {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(.red)
-                    .font(.system(size: 11))
-            }
-        }
-    }
-
-    private func appIconView(_ icon: NSImage, borderColor: Color? = nil) -> some View {
-        Image(nsImage: icon)
-            .resizable()
-            .frame(width: 14, height: 14)
-            .clipShape(RoundedRectangle(cornerRadius: 3))
-            .overlay(
-                RoundedRectangle(cornerRadius: 3)
-                    .stroke(borderColor ?? .clear, lineWidth: 1.5)
-            )
-    }
-
     // MARK: - Configurable content
 
     @ViewBuilder
     private var leftContent: some View {
         if case .recording = viewModel.state {
-            recordingContent(for: viewModel.notchIndicatorLeftContent)
+            IndicatorRecordingContent(
+                viewModel: viewModel,
+                content: viewModel.notchIndicatorLeftContent,
+                sizing: sizing,
+                dotPulse: dotPulse
+            )
         }
     }
 
     @ViewBuilder
     private var rightContent: some View {
         if case .recording = viewModel.state {
-            recordingContent(for: viewModel.notchIndicatorRightContent)
+            IndicatorRecordingContent(
+                viewModel: viewModel,
+                content: viewModel.notchIndicatorRightContent,
+                sizing: sizing,
+                dotPulse: dotPulse
+            )
         } else if case .processing = viewModel.state {
             ProgressView()
                 .controlSize(.mini)
                 .tint(.white)
         }
-    }
-
-    @ViewBuilder
-    private func recordingContent(for content: NotchIndicatorContent) -> some View {
-        switch content {
-        case .indicator:
-            Circle()
-                .fill(Color.red)
-                .frame(width: 6, height: 6)
-                .scaleEffect(1.0 + CGFloat(viewModel.audioLevel) * 0.8)
-                .shadow(color: .yellow.opacity(dotPulse ? 0.8 : 0.2),
-                    radius: dotPulse ? 6 : 2)
-        case .timer:
-            Text(formatDuration(viewModel.recordingDuration))
-                .font(.system(size: 10, weight: .medium).monospacedDigit())
-                .foregroundStyle(.white.opacity(0.6))
-        case .waveform:
-            AudioWaveformView(
-                audioLevel: viewModel.audioLevel,
-                isSetup: viewModel.recordingDuration < 0.5 && viewModel.audioLevel < 0.05,
-                compact: true
-            )
-        case .profile:
-            if let name = viewModel.activeProfileName {
-                Text(name)
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
-                    .background(.white.opacity(0.2), in: Capsule())
-            } else {
-                Color.clear
-            }
-        case .none:
-            Color.clear
-        }
-    }
-
-    // MARK: - Helpers
-
-    private func formatDuration(_ seconds: TimeInterval) -> String {
-        let totalSeconds = Int(seconds)
-        let minutes = totalSeconds / 60
-        let secs = totalSeconds % 60
-        return String(format: "%d:%02d", minutes, secs)
     }
 }
