@@ -41,6 +41,7 @@ jobs:
             openai-compatible) TARGET="OpenAICompatiblePlugin" ;;
             voxtral) TARGET="VoxtralPlugin" ;;
             deepgram) TARGET="DeepgramPlugin" ;;
+            assemblyai) TARGET="AssemblyAIPlugin" ;;
             *) echo "Unknown plugin: $PLUGIN_NAME" && exit 1 ;;
           esac
           # Set deployment target (SpeechAnalyzer requires macOS 26+)

@@ -168,6 +168,10 @@
 		AA00000000000000000210 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = BB00000000000000000201 /* manifest.json */; };
 		AA00000000000000000211 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = BB00000000000000000202 /* Localizable.xcstrings */; };
 		AA00000000000000000212 /* TypeWhisperPluginSDK in Frameworks */ = {isa = PBXBuildFile; productRef = PP00000000000000000023 /* TypeWhisperPluginSDK */; };
+		AA00000000000000000213 /* AssemblyAIPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00000000000000000204 /* AssemblyAIPlugin.swift */; };
+		AA00000000000000000214 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = BB00000000000000000205 /* manifest.json */; };
+		AA00000000000000000215 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = BB00000000000000000206 /* Localizable.xcstrings */; };
+		AA00000000000000000216 /* TypeWhisperPluginSDK in Frameworks */ = {isa = PBXBuildFile; productRef = PP00000000000000000024 /* TypeWhisperPluginSDK */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -331,6 +335,10 @@
 		BB00000000000000000200 /* DeepgramPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepgramPlugin.swift; sourceTree = "<group>"; };
 		BB00000000000000000201 /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = manifest.json; sourceTree = "<group>"; };
 		BB00000000000000000202 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		BB00000000000000000203 /* AssemblyAIPlugin.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AssemblyAIPlugin.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB00000000000000000204 /* AssemblyAIPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssemblyAIPlugin.swift; sourceTree = "<group>"; };
+		BB00000000000000000205 /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = manifest.json; sourceTree = "<group>"; };
+		BB00000000000000000206 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -456,6 +464,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				AA00000000000000000212 /* TypeWhisperPluginSDK in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FF00000000000000000092 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA00000000000000000216 /* TypeWhisperPluginSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -617,6 +633,7 @@
 				CC00000000000000000024 /* OpenAICompatiblePlugin */,
 				CC00000000000000000027 /* VoxtralPlugin */,
 				CC00000000000000000028 /* DeepgramPlugin */,
+				CC00000000000000000029 /* AssemblyAIPlugin */,
 				CC00000000000000000025 /* TypeWhisperWidgetExtension */,
 				CC00000000000000000026 /* TypeWhisperWidgetShared */,
 				CC00000000000000000090 /* Products */,
@@ -832,6 +849,7 @@
 				BB00000000000000000175 /* OpenAICompatiblePlugin.bundle */,
 				BB00000000000000000190 /* VoxtralPlugin.bundle */,
 				BB00000000000000000199 /* DeepgramPlugin.bundle */,
+				BB00000000000000000203 /* AssemblyAIPlugin.bundle */,
 				BB00000000000000000188 /* TypeWhisperWidgetExtension.appex */,
 			);
 			name = Products;
@@ -923,6 +941,17 @@
 			);
 			name = DeepgramPlugin;
 			path = Plugins/DeepgramPlugin;
+			sourceTree = "<group>";
+		};
+		CC00000000000000000029 /* AssemblyAIPlugin */ = {
+			isa = PBXGroup;
+			children = (
+				BB00000000000000000204 /* AssemblyAIPlugin.swift */,
+				BB00000000000000000205 /* manifest.json */,
+				BB00000000000000000206 /* Localizable.xcstrings */,
+			);
+			name = AssemblyAIPlugin;
+			path = Plugins/AssemblyAIPlugin;
 			sourceTree = "<group>";
 		};
 		CC00000000000000000021 /* WhisperKitPlugin */ = {
@@ -1322,6 +1351,26 @@
 			productReference = BB00000000000000000199 /* DeepgramPlugin.bundle */;
 			productType = "com.apple.product-type.bundle";
 		};
+		DD00000000000000000017 /* AssemblyAIPlugin */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FF00000000000000000094 /* Build configuration list for PBXNativeTarget "AssemblyAIPlugin" */;
+			buildPhases = (
+				FF00000000000000000091 /* Sources */,
+				FF00000000000000000092 /* Frameworks */,
+				FF00000000000000000093 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AssemblyAIPlugin;
+			packageProductDependencies = (
+				PP00000000000000000024 /* TypeWhisperPluginSDK */,
+			);
+			productName = AssemblyAIPlugin;
+			productReference = BB00000000000000000203 /* AssemblyAIPlugin.bundle */;
+			productType = "com.apple.product-type.bundle";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -1375,6 +1424,7 @@
 				DD00000000000000000013 /* OpenAICompatiblePlugin */,
 				DD00000000000000000015 /* VoxtralPlugin */,
 				DD00000000000000000016 /* DeepgramPlugin */,
+				DD00000000000000000017 /* AssemblyAIPlugin */,
 				DD00000000000000000014 /* TypeWhisperWidgetExtension */,
 			);
 		};
@@ -1507,6 +1557,15 @@
 			files = (
 				AA00000000000000000210 /* manifest.json in Resources */,
 				AA00000000000000000211 /* Localizable.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FF00000000000000000093 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA00000000000000000214 /* manifest.json in Resources */,
+				AA00000000000000000215 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1722,6 +1781,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				AA00000000000000000209 /* DeepgramPlugin.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FF00000000000000000091 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA00000000000000000213 /* AssemblyAIPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3362,6 +3429,98 @@
 			};
 			name = AppStoreRelease;
 		};
+		XX00000000000000000069 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = AssemblyAI;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSPrincipalClass = AssemblyAIPlugin;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.typewhisper.assemblyai;
+				PRODUCT_NAME = AssemblyAIPlugin;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				WRAPPER_EXTENSION = bundle;
+			};
+			name = Debug;
+		};
+		XX00000000000000000070 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = AssemblyAI;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSPrincipalClass = AssemblyAIPlugin;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.typewhisper.assemblyai;
+				PRODUCT_NAME = AssemblyAIPlugin;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				WRAPPER_EXTENSION = bundle;
+			};
+			name = Release;
+		};
+		XX00000000000000000071 /* AppStoreDebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = AssemblyAI;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSPrincipalClass = AssemblyAIPlugin;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.typewhisper.assemblyai;
+				PRODUCT_NAME = AssemblyAIPlugin;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				WRAPPER_EXTENSION = bundle;
+			};
+			name = AppStoreDebug;
+		};
+		XX00000000000000000072 /* AppStoreRelease */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = AssemblyAI;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSPrincipalClass = AssemblyAIPlugin;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.typewhisper.assemblyai;
+				PRODUCT_NAME = AssemblyAIPlugin;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				WRAPPER_EXTENSION = bundle;
+			};
+			name = AppStoreRelease;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -3541,6 +3700,17 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		FF00000000000000000094 /* Build configuration list for PBXNativeTarget "AssemblyAIPlugin" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				XX00000000000000000069 /* Debug */,
+				XX00000000000000000070 /* Release */,
+				XX00000000000000000071 /* AppStoreDebug */,
+				XX00000000000000000072 /* AppStoreRelease */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -3668,6 +3838,10 @@
 			productName = MLXAudioCore;
 		};
 		PP00000000000000000023 /* TypeWhisperPluginSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TypeWhisperPluginSDK;
+		};
+		PP00000000000000000024 /* TypeWhisperPluginSDK */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = TypeWhisperPluginSDK;
 		};
