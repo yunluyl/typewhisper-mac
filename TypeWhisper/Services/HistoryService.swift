@@ -55,15 +55,25 @@ final class HistoryService: ObservableObject {
         engineUsed: String,
         modelUsed: String? = nil
     ) {
+        let sanitizedRaw = Self.sanitize(rawText)
+        let sanitizedFinal = Self.sanitize(finalText)
+        guard !sanitizedRaw.isEmpty, !sanitizedFinal.isEmpty else {
+            logger.warning("Skipping history record: empty text after sanitization")
+            return
+        }
+        guard durationSeconds.isFinite, durationSeconds >= 0 else {
+            logger.warning("Skipping history record: invalid duration \(durationSeconds)")
+            return
+        }
         let record = TranscriptionRecord(
-            rawText: rawText,
-            finalText: finalText,
-            appName: appName,
+            rawText: sanitizedRaw,
+            finalText: sanitizedFinal,
+            appName: appName.flatMap { Self.sanitize($0).isEmpty ? nil : Self.sanitize($0) },
             appBundleIdentifier: appBundleIdentifier,
             appURL: appURL,
             durationSeconds: durationSeconds,
             language: language,
-            engineUsed: engineUsed,
+            engineUsed: engineUsed.isEmpty ? "unknown" : engineUsed,
             modelUsed: modelUsed
         )
         modelContext.insert(record)
@@ -159,6 +169,11 @@ final class HistoryService: ObservableObject {
         totalRecords = records.count
         totalWords = records.reduce(0) { $0 + $1.wordsCount }
         totalDuration = records.reduce(0) { $0 + $1.durationSeconds }
+    }
+
+    /// Remove null bytes and other control characters that can crash CoreData/SQLite.
+    private static func sanitize(_ string: String) -> String {
+        string.unicodeScalars.filter { $0 != "\0" }.map(String.init).joined()
     }
 
     private func save() {

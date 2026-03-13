@@ -162,8 +162,12 @@ final class ScriptService: ObservableObject, @unchecked Sendable {
                 process.executableURL = URL(fileURLWithPath: "/bin/sh")
                 process.arguments = ["-c", command]
 
-                // Environment: inherit system + add TypeWhisper context
+                // Environment: inherit system + add TypeWhisper context + ensure UTF-8
                 var env = ProcessInfo.processInfo.environment
+                // Ensure UTF-8 locale for correct multi-byte character handling (e.g. tr with umlauts)
+                if env["LANG"] == nil && env["LC_ALL"] == nil {
+                    env["LANG"] = "en_US.UTF-8"
+                }
                 if let appName = context.appName { env["TYPEWHISPER_APP_NAME"] = appName }
                 if let bundleId = context.bundleIdentifier { env["TYPEWHISPER_BUNDLE_ID"] = bundleId }
                 if let url = context.url { env["TYPEWHISPER_URL"] = url }
@@ -246,6 +250,14 @@ final class ScriptService: ObservableObject, @unchecked Sendable {
                     // Trim only trailing newline (scripts often append one)
                     if output.hasSuffix("\n") {
                         output = String(output.dropLast())
+                    }
+
+                    // Remove null bytes that can crash CoreData/SwiftData during save
+                    output = output.replacingOccurrences(of: "\0", with: "")
+
+                    guard !output.isEmpty else {
+                        continuation.resume(throwing: ScriptError.emptyOutput)
+                        return
                     }
 
                     continuation.resume(returning: output)
