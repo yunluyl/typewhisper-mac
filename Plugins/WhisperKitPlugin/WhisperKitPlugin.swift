@@ -94,6 +94,7 @@ final class WhisperKitPlugin: NSObject, TranscriptionEnginePlugin, @unchecked Se
             temperatureFallbackCount: 3,
             usePrefillPrompt: true,
             usePrefillCache: true,
+            detectLanguage: language == nil,
             skipSpecialTokens: true,
             withoutTimestamps: false,
             chunkingStrategy: .vad
@@ -132,6 +133,7 @@ final class WhisperKitPlugin: NSObject, TranscriptionEnginePlugin, @unchecked Se
             temperatureFallbackCount: 3,
             usePrefillPrompt: true,
             usePrefillCache: true,
+            detectLanguage: language == nil,
             skipSpecialTokens: true,
             withoutTimestamps: false,
             chunkingStrategy: .vad
