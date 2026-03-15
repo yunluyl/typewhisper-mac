@@ -185,6 +185,72 @@
       "size": 224278,
       "downloadURL": "https://github.com/TypeWhisper/typewhisper-mac/releases/download/plugin-script-v1.0.1/ScriptPlugin.zip",
       "iconSystemName": "terminal"
+    },
+    {
+      "id": "com.typewhisper.deepgram",
+      "name": "Deepgram",
+      "version": "1.0.1",
+      "minHostVersion": "0.12.0",
+      "minOSVersion": "14.0",
+      "author": "TypeWhisper",
+      "description": "Cloud transcription via Deepgram API with real-time WebSocket streaming. Requires API key.",
+      "descriptions": {
+        "de": "Cloud-Transkription ueber die Deepgram-API mit Echtzeit-WebSocket-Streaming. Erfordert API-Key."
+      },
+      "category": "transcription",
+      "size": 212300,
+      "downloadURL": "https://github.com/TypeWhisper/typewhisper-mac/releases/download/plugin-deepgram-v1.0.1/DeepgramPlugin.zip",
+      "iconSystemName": "waveform.badge.mic",
+      "requiresAPIKey": true
+    },
+    {
+      "id": "com.typewhisper.assemblyai",
+      "name": "AssemblyAI",
+      "version": "1.0.1",
+      "minHostVersion": "0.12.0",
+      "minOSVersion": "14.0",
+      "author": "TypeWhisper",
+      "description": "Cloud transcription via AssemblyAI API with real-time WebSocket streaming. Requires API key.",
+      "descriptions": {
+        "de": "Cloud-Transkription ueber die AssemblyAI-API mit Echtzeit-WebSocket-Streaming. Erfordert API-Key."
+      },
+      "category": "transcription",
+      "size": 160143,
+      "downloadURL": "https://github.com/TypeWhisper/typewhisper-mac/releases/download/plugin-assemblyai-v1.0.1/AssemblyAIPlugin.zip",
+      "iconSystemName": "waveform.badge.mic",
+      "requiresAPIKey": true
+    },
+    {
+      "id": "com.typewhisper.voxtral",
+      "name": "Voxtral",
+      "version": "1.0.3",
+      "minHostVersion": "0.12.0",
+      "minOSVersion": "14.0",
+      "author": "TypeWhisper",
+      "description": "Local speech-to-text powered by Voxtral MLX on Apple Silicon. Fast and accurate.",
+      "descriptions": {
+        "de": "Lokale Spracherkennung mit Voxtral MLX auf Apple Silicon. Schnell und praezise."
+      },
+      "category": "transcription",
+      "size": 28713621,
+      "downloadURL": "https://github.com/TypeWhisper/typewhisper-mac/releases/download/plugin-voxtral-v1.0.3/VoxtralPlugin.zip",
+      "iconSystemName": "cpu"
+    },
+    {
+      "id": "com.typewhisper.livetranscript",
+      "name": "Live Transcript",
+      "version": "1.0.0",
+      "minHostVersion": "0.12.0",
+      "minOSVersion": "14.0",
+      "author": "TypeWhisper",
+      "description": "Show a floating live transcript window during recording.",
+      "descriptions": {
+        "de": "Zeigt ein schwebendes Live-Transkript-Fenster waehrend der Aufnahme."
+      },
+      "category": "utility",
+      "size": 109119,
+      "downloadURL": "https://github.com/TypeWhisper/typewhisper-mac/releases/download/plugin-livetranscript-v1.0.0/LiveTranscriptPlugin.zip",
+      "iconSystemName": "text.bubble"
     }
   ]
 }
