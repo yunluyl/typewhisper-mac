@@ -5,5 +5,11 @@
     "minHostVersion": "0.12.0",
     "minOSVersion": "14.0",
     "author": "TypeWhisper",
+    "description": "Local speech-to-text powered by NVIDIA Parakeet TDT. Fast and accurate, 25 languages.",
+    "descriptions": {
+        "de": "Lokale Spracherkennung mit NVIDIA Parakeet TDT. Schnell und praezise, 25 Sprachen."
+    },
+    "category": "transcription",
+    "iconSystemName": "bird",
     "principalClass": "ParakeetPlugin"
 }

@@ -5,5 +5,11 @@
     "minHostVersion": "0.12.0",
     "minOSVersion": "14.0",
     "author": "TypeWhisper",
+    "description": "Local speech-to-text powered by Voxtral MLX on Apple Silicon. Fast and accurate.",
+    "descriptions": {
+        "de": "Lokale Spracherkennung mit Voxtral MLX auf Apple Silicon. Schnell und praezise."
+    },
+    "category": "transcription",
+    "iconSystemName": "cpu",
     "principalClass": "VoxtralPlugin"
 }

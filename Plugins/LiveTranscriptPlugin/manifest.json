@@ -5,5 +5,11 @@
     "minHostVersion": "0.12.0",
     "minOSVersion": "14.0",
     "author": "TypeWhisper",
+    "description": "Show a floating live transcript window during recording.",
+    "descriptions": {
+        "de": "Zeigt ein schwebendes Live-Transkript-Fenster waehrend der Aufnahme."
+    },
+    "category": "utility",
+    "iconSystemName": "text.bubble",
     "principalClass": "LiveTranscriptPlugin"
 }

@@ -5,5 +5,11 @@
     "minHostVersion": "0.9.0",
     "minOSVersion": "14.0",
     "author": "TypeWhisper",
+    "description": "Send transcribed or processed text to any webhook URL via HTTP POST.",
+    "descriptions": {
+        "de": "Transkribierten oder verarbeiteten Text per HTTP POST an eine beliebige Webhook-URL senden."
+    },
+    "category": "post-processor",
+    "iconSystemName": "arrow.up.forward.app",
     "principalClass": "WebhookPlugin"
 }

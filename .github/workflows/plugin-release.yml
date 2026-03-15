@@ -174,6 +174,7 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME}"
           DOWNLOAD_URL="https://github.com/TypeWhisper/typewhisper-mac/releases/download/${TAG}/${TARGET}.zip"
+          MANIFEST_PATH=$(find Plugins -name manifest.json -path "*${TARGET}*" 2>/dev/null | head -1)
 
           git fetch origin gh-pages
           git worktree add -B gh-pages /tmp/gh-pages origin/gh-pages
@@ -184,7 +185,7 @@ jobs:
             git reset --hard origin/gh-pages
 
             python3 << PYEOF
-          import json, sys
+          import json, sys, os
 
           with open("/tmp/gh-pages/plugins.json", "r") as f:
               registry = json.load(f)
@@ -193,6 +194,7 @@ jobs:
           version = "$PLUGIN_VERSION"
           size = int("$ZIP_SIZE")
           download_url = "$DOWNLOAD_URL"
+          manifest_path = "$MANIFEST_PATH"
 
           updated = False
           for plugin in registry["plugins"]:
@@ -205,8 +207,34 @@ jobs:
                   break
 
           if not updated:
-              print(f"Warning: No plugin matching '{plugin_name}' found in registry")
-              sys.exit(0)
+              # Read manifest.json to create a new registry entry
+              src_manifest = os.path.join("$GITHUB_WORKSPACE", manifest_path) if manifest_path else ""
+              if src_manifest and os.path.exists(src_manifest):
+                  with open(src_manifest) as mf:
+                      manifest = json.load(mf)
+                  new_entry = {
+                      "id": manifest["id"],
+                      "name": manifest["name"],
+                      "version": version,
+                      "minHostVersion": manifest.get("minHostVersion", "0.9.0"),
+                      "author": manifest.get("author", "TypeWhisper"),
+                      "description": manifest.get("description", ""),
+                      "descriptions": manifest.get("descriptions", {}),
+                      "category": manifest.get("category", "utility"),
+                      "size": size,
+                      "downloadURL": download_url
+                  }
+                  if manifest.get("minOSVersion"):
+                      new_entry["minOSVersion"] = manifest["minOSVersion"]
+                  if manifest.get("iconSystemName"):
+                      new_entry["iconSystemName"] = manifest["iconSystemName"]
+                  if manifest.get("requiresAPIKey"):
+                      new_entry["requiresAPIKey"] = manifest["requiresAPIKey"]
+                  registry["plugins"].append(new_entry)
+                  print(f"Added new plugin {manifest['id']} v{version}")
+              else:
+                  print(f"Warning: No manifest found at {src_manifest}")
+                  sys.exit(0)
 
           with open("/tmp/gh-pages/plugins.json", "w") as f:
               json.dump(registry, f, indent=2)
