@@ -57,7 +57,9 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           VERSION="${VERSION%%-*}"
-          echo "Building version: $VERSION"
+          BUILD_NUMBER=$(git rev-list --count HEAD)
+          echo "Building version: $VERSION (build $BUILD_NUMBER)"
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
 
           xcodebuild -project $PROJECT \
             -scheme $SCHEME \
@@ -69,7 +71,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM=2D8ALY3LCL \
             MARKETING_VERSION="$VERSION" \
-            CURRENT_PROJECT_VERSION="$VERSION"
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
 
       - name: Sign App (Developer ID)
         env:
@@ -300,7 +302,7 @@ jobs:
               <item>
                 <title>Version ${VERSION}</title>
                 <pubDate>${PUB_DATE}</pubDate>
-                <sparkle:version>${VERSION}</sparkle:version>
+                <sparkle:version>${BUILD_NUMBER}</sparkle:version>
                 <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
                 <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
                 <enclosure url="${DOWNLOAD_URL}" sparkle:edSignature="${ED_SIGNATURE}" length="${ED_LENGTH}" type="application/octet-stream"/>
