@@ -173,6 +173,7 @@ final class ScriptService: ObservableObject, @unchecked Sendable {
                 if let url = context.url { env["TYPEWHISPER_URL"] = url }
                 if let language = context.language { env["TYPEWHISPER_LANGUAGE"] = language }
                 if let profileName = context.profileName { env["TYPEWHISPER_PROFILE"] = profileName }
+                if let selectedText = context.selectedText { env["TYPEWHISPER_SELECTED_TEXT"] = selectedText }
                 process.environment = env
 
                 let stdinPipe = Pipe()

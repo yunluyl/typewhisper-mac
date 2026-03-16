@@ -97,6 +97,7 @@ final class DictationViewModel: ObservableObject {
     private var matchedProfile: Profile?
     private var forcedProfileId: UUID?
     private var capturedActiveApp: (name: String?, bundleId: String?, url: String?)?
+    private var capturedSelectedText: String?
 
     private var cancellables = Set<AnyCancellable>()
     private var recordingTimer: Timer?
@@ -356,6 +357,10 @@ final class DictationViewModel: ObservableObject {
         // Match profile: forced profile or app-based matching
         let activeApp = textInsertionService.captureActiveApp()
         capturedActiveApp = activeApp
+        capturedSelectedText = textInsertionService.getSelectedText()
+        if let sel = capturedSelectedText {
+            logger.info("Captured selected text (\(sel.count) chars)")
+        }
         if let bundleId = activeApp.bundleId,
            let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) {
             activeAppIcon = NSWorkspace.shared.icon(forFile: appURL.path)
@@ -578,7 +583,8 @@ final class DictationViewModel: ObservableObject {
                     bundleIdentifier: activeApp.bundleId,
                     url: activeApp.url,
                     language: language,
-                    profileName: self.matchedProfile?.name
+                    profileName: self.matchedProfile?.name,
+                    selectedText: self.capturedSelectedText
                 )
                 text = try await postProcessingPipeline.process(
                     text: text, context: ppContext, llmHandler: llmHandler
@@ -685,6 +691,7 @@ final class DictationViewModel: ObservableObject {
         matchedProfile = nil
         forcedProfileId = nil
         capturedActiveApp = nil
+        capturedSelectedText = nil
         activeAppIcon = nil
         activeProfileName = nil
         actionFeedbackMessage = nil
