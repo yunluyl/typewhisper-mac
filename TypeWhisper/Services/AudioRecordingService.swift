@@ -54,6 +54,22 @@ final class AudioRecordingService: ObservableObject, @unchecked Sendable {
 
     static let targetSampleRate: Double = 16000
 
+    static func getDefaultInputDeviceID() -> AudioDeviceID? {
+        var deviceID = AudioDeviceID(0)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        let status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address, 0, nil, &size, &deviceID
+        )
+        guard status == noErr, deviceID != 0 else { return nil }
+        return deviceID
+    }
+
     var peakRawAudioLevel: Float {
         bufferLock.lock()
         defer { bufferLock.unlock() }
@@ -111,7 +127,7 @@ final class AudioRecordingService: ObservableObject, @unchecked Sendable {
             throw AudioRecordingError.microphonePermissionDenied
         }
 
-        let deviceID = selectedDeviceID
+        let deviceID = selectedDeviceID ?? Self.getDefaultInputDeviceID()
 
         bufferLock.withLock {
             sampleBuffer.removeAll()
@@ -220,7 +236,7 @@ final class AudioRecordingService: ObservableObject, @unchecked Sendable {
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
 
-        let deviceID = selectedDeviceID
+        let deviceID = selectedDeviceID ?? Self.getDefaultInputDeviceID()
         let weakSelf = Weak(self)
 
         Task.detached(priority: .userInitiated) {

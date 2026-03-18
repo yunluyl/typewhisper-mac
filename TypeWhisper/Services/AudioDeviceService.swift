@@ -82,7 +82,7 @@ final class AudioDeviceService: ObservableObject, @unchecked Sendable {
 
         let engine = AVAudioEngine()
 
-        if let deviceID = selectedDeviceID,
+        if let deviceID = selectedDeviceID ?? AudioRecordingService.getDefaultInputDeviceID(),
            let audioUnit = engine.inputNode.audioUnit {
             var id = deviceID
             AudioUnitSetProperty(
