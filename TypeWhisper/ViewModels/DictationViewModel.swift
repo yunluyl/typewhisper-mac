@@ -34,15 +34,10 @@ final class DictationViewModel: ObservableObject {
     @Published var hotkeyMode: HotkeyService.HotkeyMode?
     @Published var partialText: String = ""
     @Published var isStreaming: Bool = false
-    @Published var audioDuckingEnabled: Bool {
-        didSet { UserDefaults.standard.set(audioDuckingEnabled, forKey: UserDefaultsKeys.audioDuckingEnabled) }
-    }
-    @Published var audioDuckingLevel: Double {
-        didSet { UserDefaults.standard.set(audioDuckingLevel, forKey: UserDefaultsKeys.audioDuckingLevel) }
-    }
-    @Published var soundFeedbackEnabled: Bool {
-        didSet { UserDefaults.standard.set(soundFeedbackEnabled, forKey: UserDefaultsKeys.soundFeedbackEnabled) }
-    }
+    @Published var audioDuckingEnabled: Bool
+    @Published var audioDuckingLevel: Double
+    @Published var soundFeedbackEnabled: Bool
+    @Published var livePreviewEnabled: Bool
     @Published var hotkeyLabelsVersion = 0
     var hybridHotkeyLabel: String { Self.loadHotkeyLabel(for: .hybrid) }
     var pttHotkeyLabel: String { Self.loadHotkeyLabel(for: .pushToTalk) }
@@ -105,10 +100,12 @@ final class DictationViewModel: ObservableObject {
     private let streamingHandler: StreamingHandler
     private let promptPaletteHandler: PromptPaletteHandler
     private let settingsHandler: DictationSettingsHandler
+    private var recordingStartTask: Task<Void, Never>?
     private var transcriptionTask: Task<Void, Never>?
     private var errorResetTask: Task<Void, Never>?
     private var insertingResetTask: Task<Void, Never>?
     private var urlResolutionTask: Task<Void, Never>?
+    private var isStartingRecording = false
 
     init(
         audioRecordingService: AudioRecordingService,
@@ -166,6 +163,7 @@ final class DictationViewModel: ObservableObject {
         self.audioDuckingEnabled = UserDefaults.standard.bool(forKey: UserDefaultsKeys.audioDuckingEnabled)
         self.audioDuckingLevel = UserDefaults.standard.object(forKey: UserDefaultsKeys.audioDuckingLevel) as? Double ?? 0.2
         self.soundFeedbackEnabled = UserDefaults.standard.object(forKey: UserDefaultsKeys.soundFeedbackEnabled) as? Bool ?? true
+        self.livePreviewEnabled = UserDefaults.standard.object(forKey: UserDefaultsKeys.livePreviewEnabled) as? Bool ?? true
         self.indicatorStyle = UserDefaults.standard.string(forKey: UserDefaultsKeys.indicatorStyle)
             .flatMap { IndicatorStyle(rawValue: $0) } ?? .notch
         self.notchIndicatorVisibility = UserDefaults.standard.string(forKey: UserDefaultsKeys.notchIndicatorVisibility)
@@ -221,6 +219,16 @@ final class DictationViewModel: ObservableObject {
         modelManager.canTranscribe
     }
 
+    /// Reads from UserDefaults as the authoritative source, since @Published + @MainActor
+    /// Combine sinks are unreliable in Swift 6 strict concurrency mode.
+    private var isSoundFeedbackEnabled: Bool {
+        UserDefaults.standard.object(forKey: UserDefaultsKeys.soundFeedbackEnabled) as? Bool ?? true
+    }
+
+    private var isLivePreviewEnabled: Bool {
+        UserDefaults.standard.object(forKey: UserDefaultsKeys.livePreviewEnabled) as? Bool ?? true
+    }
+
     var needsMicPermission: Bool {
         !audioRecordingService.hasMicrophonePermission
     }
@@ -236,7 +244,13 @@ final class DictationViewModel: ObservableObject {
     }
 
     func apiStartRecording() {
-        Task { await startRecording() }
+        recordingStartTask?.cancel()
+        audioRecordingService.cancelPendingStart()
+        let oldTask = recordingStartTask
+        recordingStartTask = Task { @MainActor in
+            _ = await oldTask?.value
+            await startRecording()
+        }
     }
 
     func apiStopRecording() {
@@ -251,19 +265,39 @@ final class DictationViewModel: ObservableObject {
 
     private func setupBindings() {
         hotkeyService.onDictationStart = { [weak self] in
-            Task { @MainActor in await self?.startRecording() }
+            guard let self else { return }
+            self.recordingStartTask?.cancel()
+            self.audioRecordingService.cancelPendingStart()
+            let oldTask = self.recordingStartTask
+            self.recordingStartTask = Task { @MainActor in
+                _ = await oldTask?.value
+                await self.startRecording()
+            }
         }
 
         hotkeyService.onDictationStop = { [weak self] in
+            self?.recordingStartTask?.cancel()
+            self?.audioRecordingService.cancelPendingStart()
             self?.stopDictation()
         }
 
         hotkeyService.onProfileDictationStart = { [weak self] profileId in
-            Task { @MainActor in await self?.startRecording(forcedProfileId: profileId) }
+            guard let self else { return }
+            self.recordingStartTask?.cancel()
+            self.audioRecordingService.cancelPendingStart()
+            let oldTask = self.recordingStartTask
+            self.recordingStartTask = Task { @MainActor in
+                _ = await oldTask?.value
+                await self.startRecording(forcedProfileId: profileId)
+            }
         }
 
         hotkeyService.onCancelPressed = { [weak self] in
             self?.cancelCurrentOperation()
+        }
+
+        audioRecordingService.onRecordingFailed = { [weak self] in
+            self?.handleRecordingFailure()
         }
 
         // Sync profile hotkeys whenever profiles change
@@ -312,6 +346,9 @@ final class DictationViewModel: ObservableObject {
     }
 
     private func cancelCurrentOperation() {
+        recordingStartTask?.cancel()
+        audioRecordingService.cancelPendingStart()
+
         switch state {
         case .recording:
             audioDuckingService.restoreAudio()
@@ -330,6 +367,29 @@ final class DictationViewModel: ObservableObject {
     }
 
     private func startRecording(forcedProfileId: UUID? = nil) async {
+        logger.info("startRecording: enter, isStartingRecording=\(self.isStartingRecording), state=\(String(describing: self.state)), Task.isCancelled=\(Task.isCancelled)")
+        guard !isStartingRecording else {
+            logger.warning("startRecording: blocked by isStartingRecording")
+            return
+        }
+        isStartingRecording = true
+        defer { isStartingRecording = false }
+
+        // Bail out immediately if this task was already cancelled (e.g. superseded
+        // by a newer start). Releases the mutex via defer without doing any work.
+        guard !Task.isCancelled else {
+            logger.info("startRecording: bailing out — task already cancelled")
+            return
+        }
+
+        // Clean up stale recording session (e.g. audio engine died after app switch)
+        if state == .recording {
+            audioDuckingService.restoreAudio()
+            streamingHandler.stop()
+            stopRecordingTimer()
+            _ = audioRecordingService.stopRecording()
+        }
+
         // Dismiss prompt palette if active
         promptPaletteHandler.hide()
 
@@ -337,11 +397,13 @@ final class DictationViewModel: ObservableObject {
         modelManager.cancelAutoUnloadTimer()
 
         guard canDictate else {
+            logger.error("startRecording: canDictate=false, aborting")
             showError("No model loaded. Please download a model first.")
             return
         }
 
         guard audioRecordingService.hasMicrophonePermission else {
+            logger.error("startRecording: no microphone permission, aborting")
             showError("Microphone permission required.")
             return
         }
@@ -412,36 +474,52 @@ final class DictationViewModel: ObservableObject {
             }
         }
 
+        guard !Task.isCancelled else {
+            logger.info("startRecording: bailing out — cancelled before engine start")
+            return
+        }
+
+        logger.info("startRecording: starting audio engine")
         do {
             audioRecordingService.selectedDeviceID = audioDeviceService.selectedDeviceID
             try await audioRecordingService.startRecording()
+
+            // Abort if stop was requested while the engine was starting
+            guard !Task.isCancelled else {
+                logger.info("startRecording: cancelled after engine start, stopping")
+                _ = audioRecordingService.stopRecording()
+                return
+            }
+
             if audioDuckingEnabled {
                 audioDuckingService.duckAudio(to: Float(audioDuckingLevel))
             }
             state = .recording
-            // Reset hotkey timer so hybrid threshold counts from recording start,
-            // not from key press. Slow device init (e.g. iPhone Continuity ~2-3s)
-            // would otherwise make the hold appear as "long press" → PTT stop.
+            logger.info("startRecording: success, state=recording")
             hotkeyService.resetKeyDownTime()
-            soundService.play(.recordingStarted, enabled: soundFeedbackEnabled)
+            soundService.play(.recordingStarted, enabled: isSoundFeedbackEnabled)
             partialText = ""
             recordingStartTime = Date()
             startRecordingTimer()
-            streamingHandler.start(
-                engineOverrideId: effectiveEngineOverrideId,
-                selectedProviderId: modelManager.selectedProviderId,
-                language: effectiveLanguage,
-                task: effectiveTask,
-                cloudModelOverride: effectiveCloudModelOverride,
-                stateCheck: { @MainActor [weak self] in self?.state ?? .idle }
-            )
+            if isLivePreviewEnabled {
+                streamingHandler.start(
+                    engineOverrideId: effectiveEngineOverrideId,
+                    selectedProviderId: modelManager.selectedProviderId,
+                    language: effectiveLanguage,
+                    task: effectiveTask,
+                    cloudModelOverride: effectiveCloudModelOverride,
+                    stateCheck: { @MainActor [weak self] in self?.state ?? .idle }
+                )
+            }
             EventBus.shared.emit(.recordingStarted(RecordingStartedPayload(
                 appName: capturedActiveApp?.name,
                 bundleIdentifier: capturedActiveApp?.bundleId
             )))
         } catch {
+            logger.error("startRecording: engine threw: \(error.localizedDescription), Task.isCancelled=\(Task.isCancelled)")
+            guard !Task.isCancelled else { return }
             audioDuckingService.restoreAudio()
-            soundService.play(.error, enabled: soundFeedbackEnabled)
+            soundService.play(.error, enabled: isSoundFeedbackEnabled)
             showError(error.localizedDescription)
             hotkeyService.cancelDictation()
         }
@@ -489,11 +567,27 @@ final class DictationViewModel: ObservableObject {
 
     private func stopDictation() {
         guard state == .recording else { return }
-
         audioDuckingService.restoreAudio()
         streamingHandler.stop()
         stopRecordingTimer()
+        finalizeRecording()
+    }
 
+    /// Called when the audio engine fails to restart after a configuration change.
+    /// Gracefully stops the session and transcribes whatever was captured.
+    private func handleRecordingFailure() {
+        guard state == .recording else { return }
+        logger.warning("Audio engine failed during recording, recovering captured audio")
+        audioDuckingService.restoreAudio()
+        streamingHandler.stop()
+        stopRecordingTimer()
+        hotkeyService.cancelDictation()
+        finalizeRecording()
+    }
+
+    /// Stops the audio engine, validates captured samples, and kicks off transcription + insertion.
+    /// Called by both user-initiated stop and engine-failure recovery.
+    private func finalizeRecording() {
         if !partialText.isEmpty {
             let elapsed = recordingStartTime.map { Date().timeIntervalSince($0) } ?? 0
             EventBus.shared.emit(.partialTranscriptionUpdate(PartialTranscriptionPayload(
@@ -523,7 +617,6 @@ final class DictationViewModel: ObservableObject {
 
         let audioDuration = Double(samples.count) / 16000.0
         guard audioDuration >= 0.3 else {
-            // Too short to transcribe meaningfully
             resetDictationState()
             return
         }
@@ -642,7 +735,7 @@ final class DictationViewModel: ObservableObject {
                     profileName: self.matchedProfile?.name
                 )))
 
-                soundService.play(.transcriptionSuccess, enabled: soundFeedbackEnabled)
+                soundService.play(.transcriptionSuccess, enabled: isSoundFeedbackEnabled)
 
                 state = .inserting
                 insertingResetTask?.cancel()
@@ -659,7 +752,7 @@ final class DictationViewModel: ObservableObject {
                     appName: capturedActiveApp?.name,
                     bundleIdentifier: capturedActiveApp?.bundleId
                 )))
-                soundService.play(.error, enabled: soundFeedbackEnabled)
+                soundService.play(.error, enabled: isSoundFeedbackEnabled)
                 showError(error.localizedDescription)
                 matchedProfile = nil
                 forcedProfileId = nil
@@ -798,7 +891,7 @@ final class DictationViewModel: ObservableObject {
     // MARK: - Standalone Prompt Palette
 
     func triggerStandalonePromptSelection() {
-        promptPaletteHandler.triggerSelection(currentState: state, soundFeedbackEnabled: soundFeedbackEnabled)
+        promptPaletteHandler.triggerSelection(currentState: state, soundFeedbackEnabled: isSoundFeedbackEnabled)
     }
 
     private func showNotchFeedback(message: String, icon: String, duration: TimeInterval = 2.5, isError: Bool = false) {

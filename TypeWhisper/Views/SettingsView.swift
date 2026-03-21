@@ -325,21 +325,53 @@ struct RecordingSettingsView: View {
             }
 
             Section(String(localized: "Sound")) {
-                Toggle(String(localized: "Play sound feedback"), isOn: $dictation.soundFeedbackEnabled)
+                Toggle(String(localized: "Play sound feedback"), isOn: Binding(
+                    get: { dictation.soundFeedbackEnabled },
+                    set: { newValue in
+                        dictation.soundFeedbackEnabled = newValue
+                        UserDefaults.standard.set(newValue, forKey: UserDefaultsKeys.soundFeedbackEnabled)
+                    }
+                ))
 
                 Text(String(localized: "Plays a sound when recording starts and when transcription completes."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
+            Section(String(localized: "Live Preview")) {
+                Toggle(String(localized: "Show live transcription preview"), isOn: Binding(
+                    get: { dictation.livePreviewEnabled },
+                    set: { newValue in
+                        dictation.livePreviewEnabled = newValue
+                        UserDefaults.standard.set(newValue, forKey: UserDefaultsKeys.livePreviewEnabled)
+                    }
+                ))
+
+                Text(String(localized: "Shows a live preview of the transcription while recording. Disabling this saves processing resources."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section(String(localized: "Audio Ducking")) {
-                Toggle(String(localized: "Reduce system volume during recording"), isOn: $dictation.audioDuckingEnabled)
+                Toggle(String(localized: "Reduce system volume during recording"), isOn: Binding(
+                    get: { dictation.audioDuckingEnabled },
+                    set: {
+                        dictation.audioDuckingEnabled = $0
+                        UserDefaults.standard.set($0, forKey: UserDefaultsKeys.audioDuckingEnabled)
+                    }
+                ))
 
                 if dictation.audioDuckingEnabled {
                     HStack {
                         Image(systemName: "speaker.slash")
                             .foregroundStyle(.secondary)
-                        Slider(value: $dictation.audioDuckingLevel, in: 0...0.5, step: 0.05)
+                        Slider(value: Binding(
+                            get: { dictation.audioDuckingLevel },
+                            set: {
+                                dictation.audioDuckingLevel = $0
+                                UserDefaults.standard.set($0, forKey: UserDefaultsKeys.audioDuckingLevel)
+                            }
+                        ), in: 0...0.5, step: 0.05)
                         Image(systemName: "speaker.wave.2")
                             .foregroundStyle(.secondary)
                     }

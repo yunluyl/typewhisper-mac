@@ -36,6 +36,11 @@ final class AudioRecordingService: ObservableObject, @unchecked Sendable {
     @Published private(set) var audioLevel: Float = 0
     @Published private(set) var rawAudioLevel: Float = 0
 
+    /// Called on the main actor when the engine fails to restart after a configuration change.
+    /// The sample buffer still holds all audio captured before the failure.
+    /// Always set and called from the main actor; no annotation to avoid init-isolation conflict.
+    nonisolated(unsafe) var onRecordingFailed: (() -> Void)?
+
     /// CoreAudio device ID to use for recording. nil = system default input.
     var selectedDeviceID: AudioDeviceID? {
         get { configLock.withLock { _selectedDeviceID } }
@@ -46,10 +51,13 @@ final class AudioRecordingService: ObservableObject, @unchecked Sendable {
 
     private var audioEngine: AVAudioEngine?
     private var configChangeObserver: NSObjectProtocol?
+    private var lastConfigChangeRestart: Date = .distantPast
     private var sampleBuffer: [Float] = []
     private var _peakRawAudioLevel: Float = 0
     private let bufferLock = NSLock()
     private let configLock = NSLock()
+    private let engineSetupHolder = OSAllocatedUnfairLock<Task<AVAudioEngine, Error>?>(initialState: nil)
+    private let retiredEngineHolder = OSAllocatedUnfairLock<AVAudioEngine?>(initialState: nil)
     private let processingQueue = DispatchQueue(label: "com.typewhisper.audio-processing", qos: .userInteractive)
 
     static let targetSampleRate: Double = 16000
@@ -98,6 +106,18 @@ final class AudioRecordingService: ObservableObject, @unchecked Sendable {
         return false
     }
 
+    /// Cancels any in-progress engine setup from a previous startRecording() call.
+    /// Safe to call from any thread. The cancelled setup task will throw CancellationError,
+    /// causing startRecording() to throw promptly instead of blocking for 2-3 seconds.
+    func cancelPendingStart() {
+        let task = engineSetupHolder.withLock { holder in
+            let t = holder
+            holder = nil
+            return t
+        }
+        task?.cancel()
+    }
+
     /// Thread-safe snapshot of the current recording buffer for streaming transcription.
     func getCurrentBuffer() -> [Float] {
         bufferLock.lock()
@@ -137,8 +157,10 @@ final class AudioRecordingService: ObservableObject, @unchecked Sendable {
         // Run AVAudioEngine setup off the main thread to avoid deadlocking
         // with AVAudioNode's internal dispatch_sync in outputFormat(forBus:).
         let weak_self = Weak(self)
-        let engine: AVAudioEngine = try await Task.detached(priority: .userInitiated) {
+        let setupTask = Task.detached(priority: .userInitiated) {
             let engine = AVAudioEngine()
+
+            try Task.checkCancellation()
 
             if let deviceID, let audioUnit = engine.inputNode.audioUnit {
                 var id = deviceID
@@ -153,6 +175,8 @@ final class AudioRecordingService: ObservableObject, @unchecked Sendable {
 
             let inputNode = engine.inputNode
             let inputFormat = inputNode.outputFormat(forBus: 0)
+
+            try Task.checkCancellation()
 
             guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
                 throw AudioRecordingError.engineStartFailed("No audio input available")
@@ -172,6 +196,8 @@ final class AudioRecordingService: ObservableObject, @unchecked Sendable {
                 throw AudioRecordingError.engineStartFailed("Cannot create audio converter")
             }
 
+            try Task.checkCancellation()
+
             inputNode.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { buffer, _ in
                 weak_self.value?.processAudioBuffer(buffer, converter: converter, targetFormat: targetFormat)
             }
@@ -183,11 +209,33 @@ final class AudioRecordingService: ObservableObject, @unchecked Sendable {
                 throw AudioRecordingError.engineStartFailed(error.localizedDescription)
             }
 
+            guard !Task.isCancelled else {
+                inputNode.removeTap(onBus: 0)
+                engine.stop()
+                // Park the stopped engine to prevent immediate dealloc racing with
+                // CoreAudio callbacks. It gets replaced on next cancellation or start.
+                weak_self.value?.retiredEngineHolder.withLock { $0 = engine }
+                throw CancellationError()
+            }
+
             return engine
-        }.value
+        }
+
+        engineSetupHolder.withLock { $0 = setupTask }
+
+        let engine: AVAudioEngine
+        do {
+            engine = try await setupTask.value
+        } catch {
+            engineSetupHolder.withLock { $0 = nil }
+            throw error
+        }
+
+        engineSetupHolder.withLock { $0 = nil }
 
         audioEngine = engine
         isRecording = true
+        lastConfigChangeRestart = Date()
 
         let weakSelf = Weak(self)
         configChangeObserver = NotificationCenter.default.addObserver(
@@ -208,7 +256,9 @@ final class AudioRecordingService: ObservableObject, @unchecked Sendable {
         }
         audioEngine?.inputNode.removeTap(onBus: 0)
         audioEngine?.stop()
-        audioEngine = nil
+        // Keep audioEngine alive — immediate dealloc races with CoreAudio's internal
+        // dispatch queues (AVAudioIOUnit, AggregateDevice). The old engine is safely
+        // released when the next startRecording() replaces it.
 
         // Flush pending audio processing before grabbing the buffer
         processingQueue.sync { }
@@ -231,6 +281,14 @@ final class AudioRecordingService: ObservableObject, @unchecked Sendable {
     @MainActor
     private func handleConfigurationChange() {
         guard isRecording, let engine = audioEngine else { return }
+
+        let now = Date()
+        let elapsed = now.timeIntervalSince(lastConfigChangeRestart)
+        guard elapsed > 2.0 else {
+            logger.info("Audio engine config change ignored — last restart was \(String(format: "%.1f", elapsed))s ago (debounce 2s)")
+            return
+        }
+        lastConfigChangeRestart = now
         logger.warning("Audio engine configuration changed during recording, restarting engine")
 
         engine.inputNode.removeTap(onBus: 0)
@@ -256,6 +314,7 @@ final class AudioRecordingService: ObservableObject, @unchecked Sendable {
 
             guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
                 logger.error("Cannot restart engine: no audio input available")
+                await MainActor.run { weakSelf.value?.onRecordingFailed?() }
                 return
             }
 
@@ -266,6 +325,7 @@ final class AudioRecordingService: ObservableObject, @unchecked Sendable {
                 interleaved: false
             ), let converter = AVAudioConverter(from: inputFormat, to: targetFormat) else {
                 logger.error("Cannot restart engine: failed to create format/converter")
+                await MainActor.run { weakSelf.value?.onRecordingFailed?() }
                 return
             }
 
@@ -279,6 +339,7 @@ final class AudioRecordingService: ObservableObject, @unchecked Sendable {
             } catch {
                 inputNode.removeTap(onBus: 0)
                 logger.error("Failed to restart audio engine: \(error.localizedDescription)")
+                await MainActor.run { weakSelf.value?.onRecordingFailed?() }
             }
         }
     }

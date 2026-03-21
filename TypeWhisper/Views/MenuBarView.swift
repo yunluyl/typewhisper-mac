@@ -125,13 +125,30 @@ struct MenuBarView: View {
 
     private func activateAppWindow(_ id: String) {
         NSApp.setActivationPolicy(.regular)
-        DispatchQueue.main.async {
+        NSApp.activate()
+
+        if let window = NSApp.windows.first(where: {
+            $0.identifier?.rawValue.localizedCaseInsensitiveContains(id) == true
+        }) {
+            window.makeKeyAndOrderFront(nil)
+            return
+        }
+
+        // First open: SwiftUI hasn't created the NSWindow yet — poll until it appears
+        var attempts = 0
+        func pollForWindow() {
             if let window = NSApp.windows.first(where: {
                 $0.identifier?.rawValue.localizedCaseInsensitiveContains(id) == true
             }) {
                 window.makeKeyAndOrderFront(nil)
+                NSApp.activate()
+                return
             }
-            NSApp.activate()
+            attempts += 1
+            if attempts < 10 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { pollForWindow() }
+            }
         }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { pollForWindow() }
     }
 }

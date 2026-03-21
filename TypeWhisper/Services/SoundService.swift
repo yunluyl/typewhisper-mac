@@ -1,6 +1,7 @@
 import AppKit
+import os
 
-enum SoundEvent {
+enum SoundEvent: CustomStringConvertible {
     case recordingStarted
     case transcriptionSuccess
     case error
@@ -12,10 +13,19 @@ enum SoundEvent {
         case .error: return "error"
         }
     }
+
+    var description: String {
+        switch self {
+        case .recordingStarted: return "recordingStarted"
+        case .transcriptionSuccess: return "transcriptionSuccess"
+        case .error: return "error"
+        }
+    }
 }
 
 @MainActor
 class SoundService {
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "typewhisper-mac", category: "SoundService")
     private var sounds: [SoundEvent: NSSound] = [:]
 
     init() {
@@ -27,6 +37,8 @@ class SoundService {
         if let sound = sounds[event] {
             sound.stop()
             sound.play()
+        } else {
+            logger.warning("play(\(event.description)): no preloaded sound found")
         }
     }
 
@@ -34,6 +46,8 @@ class SoundService {
         for event in [SoundEvent.recordingStarted, .transcriptionSuccess, .error] {
             if let url = Bundle.main.url(forResource: event.fileName, withExtension: "wav") {
                 sounds[event] = NSSound(contentsOf: url, byReference: true)
+            } else {
+                logger.warning("preload: missing sound file for \(event.description) (\(event.fileName).wav)")
             }
         }
     }
