@@ -32,7 +32,18 @@ final class AudioDeviceService: ObservableObject, @unchecked Sendable {
 
     var selectedDeviceID: AudioDeviceID? {
         guard let uid = selectedDeviceUID else { return nil }
-        return audioDeviceID(fromUID: uid)
+        guard let deviceID = audioDeviceID(fromUID: uid) else { return nil }
+        if inputChannelCount(for: deviceID) > 0 { return deviceID }
+        // Bluetooth reconfiguration can cause a saved UID to resolve to a device
+        // that currently has no input (e.g. A2DP output-only profile). Try to find
+        // another device with the same name that does have input channels.
+        if let name = deviceName(for: deviceID),
+           let alt = inputDevices.first(where: { $0.name == name && inputChannelCount(for: $0.deviceID) > 0 }) {
+            logger.info("Selected device \(uid) has no input, using alternate device '\(alt.name)' (\(alt.uid))")
+            return alt.deviceID
+        }
+        logger.warning("Selected device \(uid) has no input channels and no alternate found")
+        return nil
     }
 
     private var listenerBlock: AudioObjectPropertyListenerBlock?
@@ -83,6 +94,7 @@ final class AudioDeviceService: ObservableObject, @unchecked Sendable {
         let engine = AVAudioEngine()
 
         if let deviceID = selectedDeviceID ?? AudioRecordingService.getDefaultInputDeviceID(),
+           !AudioRecordingService.isBluetoothDevice(deviceID),
            let audioUnit = engine.inputNode.audioUnit {
             var id = deviceID
             AudioUnitSetProperty(
