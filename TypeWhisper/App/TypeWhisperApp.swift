@@ -88,6 +88,7 @@ final class SettingsWindowOpener {
 
 // MARK: - App Delegate
 
+@MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var indicatorCoordinator: IndicatorCoordinator?
     private var translationHostWindow: NSWindow?
@@ -154,12 +155,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Observe menu bar icon visibility changes
         menuBarIconObserver = UserDefaults.standard.observe(
             \.showMenuBarIcon, options: [.new]
-        ) { [weak self] _, change in
-            DispatchQueue.main.async {
+        ) { _, change in
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
                 let hidden = change.newValue == false
                 if hidden {
                     NSApp.setActivationPolicy(.regular)
-                } else if self?.hasVisibleManagedWindow != true {
+                } else if self.hasVisibleManagedWindow != true {
                     NSApp.setActivationPolicy(.accessory)
                 }
             }

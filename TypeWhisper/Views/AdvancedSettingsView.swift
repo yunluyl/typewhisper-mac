@@ -259,7 +259,7 @@ struct AdvancedSettingsView: View {
         }
     }
 
-    private func runOsascript(_ source: String, completion: @escaping () -> Void) {
+    private func runOsascript(_ source: String, completion: @Sendable @escaping () -> Void) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
         process.arguments = ["-e", source]
