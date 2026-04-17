@@ -203,19 +203,23 @@ final class DictionaryService: ObservableObject {
         }
     }
 
-    /// Get all enabled terms as a comma-separated string for Whisper prompt.
-    /// Truncates at 600 characters to stay within the API's 224-token limit.
+    /// Build a context/prompt string from enabled terms, wrapped in a natural-language
+    /// preamble so ASR models (Qwen3-ASR in particular) treat it as hotword guidance
+    /// rather than a raw token list. Terms are space-separated to match the upstream
+    /// Qwen3-ASR reference format. Truncates to stay well within typical prompt/context
+    /// budgets (Qwen3-ASR's 2048 max-model-len, OpenAI Whisper's 224-token prompt).
     func getTermsForPrompt() -> String? {
         let enabledTerms = terms.map { $0.original }
         guard !enabledTerms.isEmpty else { return nil }
-        let maxLength = 600
-        var result = ""
+        let preamble = "Context: the speaker often uses these technical terms — "
+        let maxLength = 1200
+        var result = preamble
         for (i, term) in enabledTerms.enumerated() {
-            let separator = i > 0 ? ", " : ""
-            if result.count + separator.count + term.count > maxLength { break }
+            let separator = i > 0 ? " " : ""
+            if result.count + separator.count + term.count + 1 > maxLength { break }
             result += separator + term
         }
-        return result.isEmpty ? nil : result
+        return result == preamble ? nil : result + "."
     }
 
     /// Apply all enabled corrections to the given text
